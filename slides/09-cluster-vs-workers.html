@@ -37,6 +37,25 @@ http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
     <p class="source">Node ≥ 22.12 / 23.1. Linux 3.9+, FreeBSD 12+ and a few others; it throws on macOS and Windows.</p>
   </section>
 
+  <section data-core>
+    <h2>Measured: the win is memory</h2>
+    <table class="data">
+      <thead><tr><th>4 cores, a small JSON response</th><th class="num">keep-alive</th><th class="num">new connection per request</th><th class="num">total RSS</th></tr></thead>
+      <tbody>
+        <tr><td>one process, one thread</td><td class="num">123K req/s</td><td class="num">52K req/s</td><td class="num">149 MiB</td></tr>
+        <tr><td>cluster (the primary round-robins)</td><td class="num">490K</td><td class="num loss">102K</td><td class="num loss">743 MiB</td></tr>
+        <tr><td>cluster + <code>reusePort</code></td><td class="num">489K</td><td class="num win">117K</td><td class="num">666 MiB</td></tr>
+        <tr><td>Workers + <code>reusePort</code>, one process</td><td class="num">487K</td><td class="num win">118K</td><td class="num win">421 MiB</td></tr>
+      </tbody>
+    </table>
+    <div class="stats" style="margin-top:22px">
+      <div class="stat good"><span class="stat-value">+15%</span><span class="stat-label">req/s with <code>reusePort</code> when connections churn: the primary is off the path</span></div>
+      <div class="stat good"><span class="stat-value">−43%</span><span class="stat-label">RSS: Workers vs cluster. Compute is cheap, memory is not.</span></div>
+    </div>
+    <p class="source">benchmarks/cluster-vs-workers.mjs · autocannon, 128 connections, on 8 other cores · median of 3 × 10 s · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">With keep-alive the primary only hands over 128 connections once, so all three scale linearly (4×). It only matters when connections churn.</aside>
+  </section>
+
   <section>
     <h2>Comparison</h2>
     <table class="data">
@@ -47,7 +66,7 @@ http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
         <tr><td>Sharing state</td><td>IPC only</td><td>SharedArrayBuffer</td></tr>
         <tr><td>Communication</td><td>JSON over IPC</td><td>shared memory + Atomics</td></tr>
         <tr><td>Memory per worker</td><td>a whole process</td><td>an isolate + heap in one process</td></tr>
-        <tr><td>Primary bottleneck</td><td class="loss">yes</td><td class="win">no</td></tr>
+        <tr><td>Primary in the path</td><td class="loss">for every new connection</td><td class="win">never</td></tr>
       </tbody>
     </table>
     <p class="muted">Remember: every Worker in a process shares one libuv thread pool (next).</p>
