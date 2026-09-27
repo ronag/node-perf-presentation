@@ -31,20 +31,21 @@ Open the speaker view on the laptop and drag the main window to the projector.
 ### Core path vs full deck
 
 The deck has ~140 slides, far more than 30 minutes allow.
-- **Core path (`?core`).** About 40 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
+- **Core path (`?core`).** 38 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
 - **Full deck.** Without `?core` everything is shown, for depth and Q&A. Backup chapters are uncounted.
 
 | Part | Core slides | ⏱ target |
 |---|---|---|
-| Title, where time goes, compute is cheap / memory is not | 3 | 0:00–2:00 |
+| Title, where time goes, compute is cheap / memory is not | 3 | 0:00–2:30 |
 | Build your own Node: official → 0 tune → 1 mimalloc → 2 Clang 23 → 3 LTO → 4 -march → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 2:30–10:00 |
-| GC semi-space, flat queue, intrusive containers, bitmaps, Slice, `Buffer.poolSize` | 7 | 10:00–14:30 |
-| HTTP: `res.write()` vs cork vs slab, custom ServerResponse | 3 | 14:30–16:30 |
-| async/await cost, async return pattern, sync I/O (12× / 190×) | 3 | 16:30–19:00 |
-| SQLite: prepare once, durability, sharding | 3 | 19:00–21:30 |
-| URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:30–25:00 |
-| Workers + reusePort, thread pool, ring buffer | 3 | 25:00–27:00 |
-| Takeaways, thank you | 2 | 27:00–28:00 |
+| GC semi-space, async/await cost, async return pattern, sync I/O (12× / 190×) | 4 | 10:00–13:00 |
+| SQLite: prepare once, durability, sharding | 3 | 13:00–15:30 |
+| Workers + reusePort, thread pool, ring buffer | 3 | 15:30–17:30 |
+| Bitmaps, Slice, `Buffer.poolSize` | 3 | 17:30–19:30 |
+| HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 3 | 19:30–21:30 |
+| URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:30–25:30 |
+| Flat queue, intrusive containers (last on purpose: cut first if late) | 2 | 25:30–27:00 |
+| Thank you | 1 | 27:00 |
 
 ### PDF
 

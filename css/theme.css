@@ -555,10 +555,6 @@ html.reveal-print .reveal .chart-bar { transition: none; }
 /* Print / PDF */
 html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
 
-/* Takeaways list */
-.reveal ol.takeaways { font-size: 0.74em; margin-left: 1.2em; }
-.reveal ol.takeaways li + li { margin-top: 12px; }
-.reveal ol.takeaways li::marker { font-weight: 800; }
 .reveal .chart-row.pending .chart-value { color: var(--faint); font-style: italic; }
 
 /* Chapter openers (class="section-header") */

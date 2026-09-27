@@ -50,11 +50,16 @@ try {
   }
 
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false })
-  await send('Page.navigate', { url: URL_ })
-  for (let i = 0; i < 100; i++) {
-    await sleep(100)
-    if (await evaluate('typeof Reveal !== "undefined" && Reveal.isReady()')) break
+  // (Re)load the deck and wait until Reveal is ready
+  const load = async () => {
+    await send('Page.navigate', { url: URL_ })
+    for (let i = 0; i < 100; i++) {
+      await sleep(100)
+      try { if (await evaluate('typeof Reveal !== "undefined" && Reveal.isReady()')) return } catch {}
+    }
+    throw new Error('deck did not load')
   }
+  await load()
 
   // Reveal.getSlides() skips uncounted (appendix) slides, so walk the DOM
   const slides = await evaluate(`[...document.querySelectorAll('.slides > section')].flatMap((top, h) => {
@@ -106,6 +111,8 @@ try {
       // headless Chrome occasionally stalls on a frame: retry once, then skip
       console.log(`${String(n + 1).padStart(3)} [${s.h}/${s.v}] ${attempt === 1 ? 'retrying' : 'SKIPPED'}: ${err.message}`)
       if (attempt === 2) problems.push(`${n + 1} skipped`)
+      // a stalled renderer stays stalled: reload the deck before going on
+      await load().catch((e) => console.log(`      reload failed: ${e.message}`))
     }
    }
   }

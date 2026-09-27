@@ -63,8 +63,8 @@
       <div data-value="-2.2">process startup</div>
     </div>
     <p class="muted">The purge delay is a dial: a 1 s delay is fast, but after 512 MiB of Buffer churn it keeps 579 MiB resident vs 62 MiB with glibc. Purging on free saves RSS and costs throughput.</p>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>+2.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
+    <p class="source">Geomean over 58–60 workload metrics: <strong>+2.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section data-core>
     <h2>Step 2: a newer compiler</h2>
@@ -80,9 +80,8 @@
       <div data-value="-7.5">process startup</div>
     </div>
     <p class="muted">On its own: <strong>within noise</strong>. The newer compiler is the base for the next steps. Trap: <code>configure</code> doesn't pass your CFLAGS to V8, so inject flags with a compiler wrapper and check they landed.</p>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>−0.6%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
-
+    <p class="source">Geomean over 58–60 workload metrics: <strong>−0.6%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section data-core>
     <h2>Step 3: link-time optimization</h2>
@@ -98,9 +97,8 @@
       <div data-value="-1.5">allocate 2M objects</div>
     </div>
     <p class="muted">On its own: <strong>within noise</strong> on these workloads. Costs: ~5.5 GiB RSS per link and a slow rebuild loop.</p>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>−0.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
-
+    <p class="source">Geomean over 58–60 workload metrics: <strong>−0.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section data-core>
     <h2>Step 4: compile for the CPU you run on</h2>
@@ -117,8 +115,8 @@
       <div data-value="-2.3">HTTP, 4 Workers + reusePort</div>
     </div>
     <p class="muted"><strong><code>-mtune</code> is free; <code>-march</code> is a contract.</strong> On a CPU older than Haswell / Zen 1 the binary dies with SIGILL. Watch generic VM CPU models.</p>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>+2.8%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
+    <p class="source">Geomean over 58–60 workload metrics: <strong>+2.8%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section data-core>
     <h2>Step 5: profile-guided optimization</h2>
@@ -139,8 +137,8 @@
       <div data-value="6.2">record churn under GC</div>
       <div data-value="2.4">JSON.stringify</div>
     </div>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>+8.0%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
+    <p class="source">Geomean over 58–60 workload metrics: <strong>+8.0%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section data-core>
     <h2>PGO: you get what you train</h2>
@@ -177,8 +175,8 @@
       <div data-value="-4.0">JSON.stringify</div>
       <div data-value="-5.4">JSON.parse</div>
     </div>
-  <p class="source">Geomean over 58–60 workload metrics: <strong>+6.5%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
-    </section>
+    <p class="source">Geomean over 58–60 workload metrics: <strong>+6.5%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+  </section>
 
   <section>
     <h2>Pointer compression: the fine print</h2>
