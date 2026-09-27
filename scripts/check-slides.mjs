@@ -65,6 +65,8 @@ try {
 
   const problems = []
   for (const [n, s] of slides.entries()) {
+   for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
     await evaluate(`Reveal.slide(${s.h}, ${s.v}, 99); fitCode(Reveal.getCurrentSlide())`)
     await sleep(1300)
     const issues = await evaluate(`(() => {
@@ -99,6 +101,13 @@ try {
     const line = `${String(n + 1).padStart(3)} [${s.h}/${s.v}] ${s.title}`
     console.log(issues.length ? `${line}\n      ⚠ ${issues.join('\n      ⚠ ')}` : line)
     if (issues.length) problems.push(line)
+    break
+    } catch (err) {
+      // headless Chrome occasionally stalls on a frame: retry once, then skip
+      console.log(`${String(n + 1).padStart(3)} [${s.h}/${s.v}] ${attempt === 1 ? 'retrying' : 'SKIPPED'}: ${err.message}`)
+      if (attempt === 2) problems.push(`${n + 1} skipped`)
+    }
+   }
   }
   console.log(`\n${slides.length} slides, ${problems.length} with issues. Screenshots: ${out}`)
   ws.close()

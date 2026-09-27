@@ -37,14 +37,14 @@ The deck has ~140 slides, far more than 30 minutes allow.
 | Part | Core slides | ⏱ target |
 |---|---|---|
 | Title, where time goes, memory, benchmarks lie | 4 | 0:00–2:30 |
-| Build your own Node: official → Clang+LTO → -march → PGO → pointer compression → tuning | 9 | 2:30–9:00 |
-| GC semi-space, callbacks, intrusive containers, bitmaps, Slice, `Buffer.poolSize` | 7 | 9:00–14:00 |
-| HTTP: slab responses, custom ServerResponse, object shapes | 4 | 14:00–17:00 |
-| async/await cost, sync fast path, sync I/O (12× / 190×) | 3 | 17:00–19:30 |
-| SQLite: prepare once, durability, sharding | 3 | 19:30–22:00 |
-| URL parsing, timers, yielding, priorities | 5 | 22:00–25:30 |
-| Workers + reusePort, thread pool, ring buffer | 3 | 25:30–27:30 |
-| Takeaways, thank you | 2 | 27:30–28:30 |
+| Build your own Node: official → 0 tune → 1 mimalloc → 2 Clang 23 → 3 LTO → 4 -march → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 2:30–10:00 |
+| GC semi-space, flat queue, intrusive containers, bitmaps, Slice, `Buffer.poolSize` | 7 | 10:00–14:30 |
+| HTTP: `res.write()` vs cork vs slab, custom ServerResponse | 3 | 14:30–16:30 |
+| async/await cost, async return pattern, sync I/O (12× / 190×) | 3 | 16:30–19:00 |
+| SQLite: prepare once, durability, sharding | 3 | 19:00–21:30 |
+| URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:30–25:00 |
+| Workers + reusePort, thread pool, ring buffer | 3 | 25:00–27:00 |
+| Takeaways, thank you | 2 | 27:00–28:00 |
 
 ### PDF
 

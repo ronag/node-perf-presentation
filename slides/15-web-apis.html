@@ -33,21 +33,6 @@
     <p class="source">request-target as the oracle: differential fuzzing, 5M inputs per suite · EPYC 9355P · Node 26.9 · one pinned core · string creation (~77 ns) subtracted, so lower than the previous slide</p>
   </section>
 
-  <section>
-    <h2>WASM + JS string builtins</h2>
-    <div class="cols">
-      <div class="card good"><span class="card-title">&lt; 32 chars: <code>wasm:js-string</code></span>A scalar loop reads the JS string directly through the JS string builtins. No copy into linear memory.</div>
-      <div class="card good"><span class="card-title">≥ 32 chars: SIMD</span>Copy into linear memory as UTF-8, then classify 16 bytes at a time with nibble lookup tables and find <code>?</code>, <code>//</code> and <code>%</code> with bitmasks.</div>
-    </div>
-    <table class="data" style="margin-top:14px">
-      <thead><tr><th>scan only, incl. string creation</th><th class="num">8 ch</th><th class="num">32 ch</th><th class="num">202 ch</th><th class="num">2,048 ch</th></tr></thead>
-      <tbody>
-        <tr><td>scalar over the JS string</td><td class="num win">43 ns</td><td class="num">62 ns</td><td class="num">252 ns</td><td class="num">1,280 ns</td></tr>
-        <tr><td>copy + SIMD</td><td class="num">57 ns</td><td class="num win">61 ns</td><td class="num win">97 ns</td><td class="num win">358 ns</td></tr>
-      </tbody>
-    </table>
-    <p class="muted">Copy as UTF-8, not latin1: latin1 keeps only the low byte, so U+012F would turn into <code>/</code>. Without WebAssembly or SIMD, fall back to the regex parser.</p>
-  </section>
 
   <section>
     <h2>HTTP client: <code>fetch</code> vs <code>undici</code></h2>

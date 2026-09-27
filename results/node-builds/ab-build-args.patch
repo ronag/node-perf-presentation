@@ -1,0 +1,86 @@
+--- a/docker/swarm/base/node/Dockerfile	2026-09-26 13:41:58
++++ b/docker/swarm/base/node/Dockerfile	2026-09-27 12:52:00
+@@ -91,7 +91,9 @@
+ # verbatim, already rebased on the merged #63828. Re-verify/regenerate on
+ # NODE_VERSION bumps.
+ COPY patches/buffer-copy-optimizations.patch /tmp/buffer-copy-optimizations.patch
+-RUN git apply --verbose --recount /tmp/buffer-copy-optimizations.patch
++# A/B: V8_PATCH=0 builds without the V8 API extension
++ARG V8_PATCH=1
++RUN if [ "${V8_PATCH}" = 0 ]; then echo "skipping the V8 patch"; else git apply --verbose --recount /tmp/buffer-copy-optimizations.patch; fi
+ 
+ # Disable parallel/test-snapshot-reproducible before building. The test builds
+ # the V8 startup snapshot twice and asserts the two are byte-for-byte identical,
+@@ -137,11 +139,18 @@
+ ARG POINTER_COMPRESSION=0
+ 
+ ARG BUILD_JOBS=0
++# A/B knobs (defaults = production recipe)
++ARG NODE_TARGET_FLAGS="-march=x86-64-v3 -mtune=znver3 -mpclmul"
++ENV NODE_TARGET_FLAGS="${NODE_TARGET_FLAGS}"
++ARG PGO=1
++ARG LTO=1
++ARG RUN_TESTS=1
+ ENV NODE_PGO_MODE=generate
+-RUN build_jobs="${BUILD_JOBS}"; \
++RUN if [ "${PGO}" = 0 ]; then export NODE_PGO_MODE=; fi; \
++  build_jobs="${BUILD_JOBS}"; \
+   if [ "${build_jobs}" -eq 0 ]; then build_jobs="$(nproc)"; fi; \
+   test "${build_jobs}" -ge 1 \
+-  && ./configure --enable-lto --v8-enable-temporal-support \
++  && ./configure $([ "${LTO}" = 0 ] || echo --enable-lto) --v8-enable-temporal-support \
+     $([ "${POINTER_COMPRESSION}" = "1" ] && echo --experimental-enable-pointer-compression) \
+   && LLVM_PROFILE_FILE=/tmp/node-build-%m-%p.profraw \
+     make -j"${build_jobs}"
+@@ -161,7 +170,8 @@
+ # process writing its own raw profiles, which are then merged with the weights
+ # the driver emits — see scripts/pgo-train.mjs for what is trained and why.
+ # TLS needs a certificate; generate a throwaway one rather than shipping a key.
+-RUN test "${PGO_TRAIN_SECONDS}" -ge 10 \
++RUN if [ "${PGO}" = 0 ]; then echo "pgo=off target=${NODE_TARGET_FLAGS}" > /opt/pgo/stamp; exit 0; fi; \
++  test "${PGO_TRAIN_SECONDS}" -ge 10 \
+   && rm -f /tmp/node-build-*.profraw \
+   && mkdir -p /opt/pgo/driver /opt/pgo/profiles \
+   && openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes \
+@@ -178,11 +188,12 @@
+ # Rebuild the same Node/V8 configuration with the freshly trained Clang IR
+ # profile.
+ ENV NODE_PGO_MODE=use
+-RUN build_jobs="${BUILD_JOBS}"; \
++RUN if [ "${PGO}" = 0 ]; then exit 0; fi; \
++  build_jobs="${BUILD_JOBS}"; \
+   if [ "${build_jobs}" -eq 0 ]; then build_jobs="$(nproc)"; fi; \
+   test "${build_jobs}" -ge 1 \
+   && make distclean \
+-  && ./configure --enable-lto --v8-enable-temporal-support \
++  && ./configure $([ "${LTO}" = 0 ] || echo --enable-lto) --v8-enable-temporal-support \
+     $([ "${POINTER_COMPRESSION}" = "1" ] && echo --experimental-enable-pointer-compression) \
+   && make -j"${build_jobs}"
+ 
+@@ -192,7 +203,7 @@
+ # target once per addon suite and redundantly relinking full-LTO Node/V8.
+ # Node's own `run-ci` target deliberately invokes this subtarget with -j1
+ # because its test runner and addon builders provide their own parallelism.
+-RUN make test-ci -j1
++RUN [ "${RUN_TESTS}" = 0 ] || make test-ci -j1
+ 
+ # Install Node.js system-wide, and delete its bundled npm before /usr/local is
+ # copied into the runtime stage, so npm never enters a published image layer.
+--- a/docker/swarm/base/node/scripts/clang-wrapper.sh	2026-09-19 22:31:35
++++ b/docker/swarm/base/node/scripts/clang-wrapper.sh	2026-09-27 11:54:00
+@@ -29,11 +29,12 @@
+ # Node's configure.py does not propagate ambient CFLAGS/CXXFLAGS into the
+ # generated Node/V8 targets. Inject the target flags at the compiler boundary
+ # so they also cover V8, generated sources, tests, and host tools.
++# A/B builds: the ISA target is overridable (empty = compiler default x86-64).
++: "${NODE_TARGET_FLAGS=-march=x86-64-v3 -mtune=znver3 -mpclmul}"
++# shellcheck disable=SC2086
+ set -- \
+   -O3 \
+-  -march=x86-64-v3 \
+-  -mtune=znver3 \
+-  -mpclmul \
++  $NODE_TARGET_FLAGS \
+   -fno-plt \
+   -fno-semantic-interposition \
+   -ffunction-sections \

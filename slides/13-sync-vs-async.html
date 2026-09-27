@@ -1,25 +1,10 @@
-<!-- SYNC VS ASYNC METHODS & V8 FAST API -->
-<section id="sync-vs-async" data-chapter="Sync methods &amp; the native boundary" data-chapter-num="12">
+<!-- SYNC VS ASYNC METHODS -->
+<section id="sync-vs-async" data-chapter="Sync methods" data-chapter-num="12">
   <section class="section-header">
-    <h2>V8 Fast API &amp; Sync Methods</h2>
-    <p>Crossing into C++, and when not to leave the thread</p>
+    <h2>Sync Methods</h2>
+    <p>When not to leave the thread</p>
   </section>
 
-  <section>
-    <h2>V8 Fast API calls</h2>
-    <div class="cols">
-      <div class="card bad"><span class="card-title">Normal native call</span>JS → V8 → C++ → V8 → JS: argument conversion, handle scopes, a trip through the runtime.</div>
-      <div class="card good"><span class="card-title">Fast API call</span>JS → C++, called directly from TurboFan-compiled code when the argument types are known.</div>
-    </div>
-    <div class="cols" style="margin-top:14px">
-      <div class="card good"><span class="card-title">Fast in Node 26</span>
-        <code>buf.copy</code>, <code>compare</code>, <code>swap16/32/64</code>, <code>Buffer.byteLength</code>, <code>isUtf8</code>, <code>isAscii</code>,
-        <code>performance.now</code>, <code>hrtime</code>, <code>URL.canParse</code>, <code>timingSafeEqual</code>, <code>zlib.crc32</code></div>
-      <div class="card warn"><span class="card-title">Not Fast API</span>
-        <code>fs.*Sync</code>, <code>buf.fill</code>, <code>TextEncoder.encodeInto</code>. Sync fs is fast because it skips the thread pool, not because of the call.</div>
-    </div>
-    <p class="muted">And native isn't free: <code>Buffer.compare</code> on a 5-byte slice took 84 ns, a JS byte loop 2.85 ns.</p>
-  </section>
 
   <section data-core>
     <h2>Sync vs async: 12× on Linux, 190× on macOS</h2>
