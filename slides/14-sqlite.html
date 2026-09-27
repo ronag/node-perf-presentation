@@ -28,9 +28,9 @@ byId.get(42)                                                   // no Promise, no
       <div data-value="25.9" data-note="8×">journal_mode=WAL, synchronous=FULL</div>
       <div class="good" data-value="11.5" data-note="19×">journal_mode=WAL, synchronous=NORMAL</div>
       <div class="good" data-value="3.88" data-note="56×">journal_mode=WAL, synchronous=OFF</div>
-      <div class="good" data-value="1.36" data-note="159×">WAL + NORMAL, 1,000 rows per transaction</div>
     </div>
     <p class="muted"><strong>NORMAL</strong> in WAL mode never corrupts; a power cut may lose the last commits. <strong>OFF</strong> is for data you can rebuild: caches, scratch tables.</p>
+    <p class="callout">Batch writes: 1,000 rows per transaction (WAL + NORMAL) is <strong>1.36 µs</strong> per row.</p>
     <p class="source">benchmarks/sqlite-pragmas.mjs · NVMe RAID1 (Samsung PM9A3) · log scale</p>
   </section>
 

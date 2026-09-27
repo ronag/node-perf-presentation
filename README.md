@@ -36,7 +36,7 @@ The deck has ~140 slides, far more than 30 minutes allow.
 
 | Part | Core slides | ⏱ target |
 |---|---|---|
-| Title, where time goes, memory, benchmarks lie | 4 | 0:00–2:30 |
+| Title, where time goes, compute is cheap / memory is not | 3 | 0:00–2:00 |
 | Build your own Node: official → 0 tune → 1 mimalloc → 2 Clang 23 → 3 LTO → 4 -march → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 2:30–10:00 |
 | GC semi-space, flat queue, intrusive containers, bitmaps, Slice, `Buffer.poolSize` | 7 | 10:00–14:30 |
 | HTTP: `res.write()` vs cork vs slab, custom ServerResponse | 3 | 14:30–16:30 |

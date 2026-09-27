@@ -19,22 +19,6 @@
   </section>
 
   <section>
-    <h2>Validate in one pass, in WebAssembly</h2>
-    <p class="lead">Scan the common origin-form <code>/path?query</code> in WASM; hand anything unusual to request-target unchanged.</p>
-    <div class="chart" data-unit="ns" data-title="validate + split a request target (fresh strings)">
-      <div class="bad" data-value="216">URL.parse(url, 'http://' + host) · 20 chars</div>
-      <div data-value="150">request-target · 20 chars</div>
-      <div class="good" data-value="71" data-note="2.1×">WASM validator · 20 chars</div>
-      <div class="bad" data-value="299">URL.parse(url, 'http://' + host) · 202 chars</div>
-      <div data-value="351">request-target · 202 chars</div>
-      <div class="good" data-value="113" data-note="3.1×">WASM validator · 202 chars</div>
-    </div>
-    <p class="callout bad"><code>URL.parse(url, 'http://' + host)</code> also accepts <code>//evil.example/x</code> as a <em>different host</em>.</p>
-    <p class="source">request-target as the oracle: differential fuzzing, 5M inputs per suite · EPYC 9355P · Node 26.9 · one pinned core · string creation (~77 ns) subtracted, so lower than the previous slide</p>
-  </section>
-
-
-  <section>
     <h2>HTTP client: <code>fetch</code> vs <code>undici</code></h2>
     <div class="chart" data-unit="req/s" data-title="50 connections, pipelining depth 10">
       <div class="bad" data-value="5438">fetch</div>

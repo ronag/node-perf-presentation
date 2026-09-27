@@ -38,17 +38,6 @@ bench('sum', () => {
     <p class="callout">A benchmark is the best case for both V8 and the CPU. Production is the worst case.</p>
   </section>
 
-  <section data-core>
-    <h2>Benchmarks lie. Mine did too.</h2>
-    <p class="lead">My “linked lists are 5,000× slower” slide was really measuring a V8 Map cliff</p>
-    <div class="chart" data-unit="ns" data-scale="log" data-title="Map with 10,000 entries: delete + set">
-      <div class="bad" data-value="17570">the same key, over and over</div>
-      <div class="good" data-value="36.1">a different key each time</div>
-    </div>
-    <p class="muted">Deleting and re-inserting one key is O(n) in V8's ordered hash tables. My benchmark did exactly that.</p>
-    <p class="source">benchmarks/map-same-key.mjs · EPYC 9355P · Node 26.10 · log scale</p>
-    <aside class="notes">I re-ran every number for this talk and found my own benchmark was wrong. Measure, then doubt the measurement.</aside>
-  </section>
 
   <section>
     <h2>Big-O counts steps, not cache misses</h2>

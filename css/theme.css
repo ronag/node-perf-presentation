@@ -323,6 +323,7 @@ html.print-pdf .reveal .slides > section, html.print-pdf .pdf-page { background:
 .reveal pre.dense { font-size: 0.54em; }
 .reveal pre.big { font-size: 0.8em; }
 .reveal .hljs { background: var(--code-bg); }
+.reveal pre code.hljs { min-height: 0; }   /* reveal sets 100% (content-box), so the padding overflowed the pre */
 .reveal .hljs-comment { color: #7b8490; font-style: normal; }
 /* Stepped line highlights: dim the rest a bit less than default */
 .reveal .hljs.has-highlights tr:not(.highlight-line) { opacity: 0.35; }
@@ -361,6 +362,9 @@ html.print-pdf .reveal .slides > section, html.print-pdf .pdf-page { background:
   background: var(--faint);
   transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms;
 }
+/* Long per-step charts: tighter rows */
+.reveal .chart.compact { row-gap: 7px; font-size: 0.68em; margin: 4px 0 10px; }
+.reveal .chart.compact .chart-track { height: 24px; }
 .reveal .chart-row.good .chart-bar { background: var(--good); }
 .reveal .chart-row.bad .chart-bar { background: var(--bad); }
 .reveal .chart-row.info .chart-bar { background: var(--info); }

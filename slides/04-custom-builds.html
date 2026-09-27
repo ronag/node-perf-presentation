@@ -19,9 +19,9 @@
       <div class="step fragment fade-up"><b>7 · Patch V8</b>your own runtime</div>
     </div>
     <div class="stats fragment fade-up" style="margin-top:26px">
-      <div class="stat good"><span class="stat-value">B_TOTAL_HTTP</span><span class="stat-label">HTTP req/s, official → all steps</span></div>
-      <div class="stat good"><span class="stat-value">B_TOTAL_JSON</span><span class="stat-label">JSON.parse throughput</span></div>
-      <div class="stat good"><span class="stat-value">B_TOTAL_RSS</span><span class="stat-label">RSS for 2M live objects</span></div>
+      <div class="stat good"><span class="stat-value">+28%</span><span class="stat-label">HTTP req/s, official → all steps</span></div>
+      <div class="stat good"><span class="stat-value">+8%</span><span class="stat-label">JSON.parse throughput</span></div>
+      <div class="stat good"><span class="stat-value">−63%</span><span class="stat-label">RSS for 2M live objects</span></div>
     </div>
     <p class="source">Same Node 26.10.0 source for every build. Built and measured on an AMD EPYC 9355P (Zen 5): 14 workload groups, median of interleaved runs, pinned cores.</p>
   </section>
@@ -50,40 +50,75 @@
   <section data-core>
     <h2>Step 1: tune the runtime: a better allocator</h2>
     <pre><code class="language-bash">LD_PRELOAD=/usr/local/lib/libmimalloc.so MIMALLOC_PURGE_DELAY=1000 node app.js   # no rebuild</code></pre>
-    <div class="chart" data-signed data-unit="%" data-title="official node:26.10.0: glibc malloc → mimalloc via LD_PRELOAD (same binary)">
-      B_STEP_MIMALLOC_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="official node:26.10.0: glibc malloc → mimalloc via LD_PRELOAD (same binary) · + is better: faster, or less memory">
+      <div data-value="60.6">JSON.stringify escaped strings 1.8 MiB</div>
+      <div data-value="43.7">Buffer.allocUnsafe 256 KiB chunk churn</div>
+      <div data-value="3.2">allocate 2M objects</div>
+      <div data-value="1.9">HTTP/1.1 req/s</div>
+      <div data-value="1.2">HTTP, 4 Workers + reusePort</div>
+      <div data-value="1.1">event-loop p99.9 under GC</div>
+      <div data-value="-0.2">JSON.stringify</div>
+      <div data-value="-0.6">JSON.parse</div>
+      <div data-value="-0.8">record churn under GC</div>
+      <div data-value="-2.2">process startup</div>
     </div>
-    <p class="muted">The purge delay is a dial: a 1 s delay is fast, but B_MIMALLOC_RSS. Purging on free saves RSS and costs throughput.</p>
-  </section>
+    <p class="muted">The purge delay is a dial: a 1 s delay is fast, but after 512 MiB of Buffer churn it keeps 579 MiB resident vs 62 MiB with glibc. Purging on free saves RSS and costs throughput.</p>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>+2.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
   <section data-core>
     <h2>Step 2: a newer compiler</h2>
     <pre><code class="language-bash">CC=clang-23 CXX=clang++-23 ./configure   # the official 26.10 binary: Clang 20.1, no LTO</code></pre>
-    <div class="chart" data-signed data-unit="%" data-title="official + mimalloc → the same source built with Clang 23">
-      B_STEP_CLANG_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="official + mimalloc → the same source built with Clang 23">
+      <div data-value="1.5">allocate 2M objects</div>
+      <div data-value="1.2">HTTP/1.1 req/s</div>
+      <div data-value="0.7">HTTP, 4 Workers + reusePort</div>
+      <div data-value="-1.1">JSON.stringify</div>
+      <div data-value="-1.1">JSON.parse</div>
+      <div data-value="-2.6">event-loop p99.9 under GC</div>
+      <div data-value="-3.7">record churn under GC</div>
+      <div data-value="-7.5">process startup</div>
     </div>
-    <p class="muted">Trap: Node's <code>configure</code> doesn't pass your CFLAGS to V8. Inject flags with a compiler wrapper, and check that they landed.</p>
-  </section>
+    <p class="muted">On its own: <strong>within noise</strong>. The newer compiler is the base for the next steps. Trap: <code>configure</code> doesn't pass your CFLAGS to V8, so inject flags with a compiler wrapper and check they landed.</p>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>−0.6%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
 
   <section data-core>
     <h2>Step 3: link-time optimization</h2>
     <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
-    <div class="chart" data-signed data-unit="%" data-title="Clang 23 → + full LTO">
-      B_STEP_LTO_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="Clang 23 → + full LTO">
+      <div data-value="7.4">event-loop p99.9 under GC</div>
+      <div data-value="3.5">HTTP/1.1 req/s</div>
+      <div data-value="3.0">record churn under GC</div>
+      <div data-value="2.8">HTTP, 4 Workers + reusePort</div>
+      <div data-value="2.7">process startup</div>
+      <div data-value="0.5">JSON.parse</div>
+      <div data-value="-0.5">JSON.stringify</div>
+      <div data-value="-1.5">allocate 2M objects</div>
     </div>
-    <p class="muted">Costs: link time (~5.5 GiB RSS per link) and a slower rebuild loop. Link with BFD; LLD and gold broke a SEA test for us.</p>
-  </section>
+    <p class="muted">On its own: <strong>within noise</strong> on these workloads. Costs: ~5.5 GiB RSS per link and a slow rebuild loop.</p>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>−0.1%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
 
   <section data-core>
     <h2>Step 4: compile for the CPU you run on</h2>
     <pre><code class="language-bash">-march=x86-64-v3 -mtune=znver3     # AVX2 · BMI2 · FMA · F16C</code></pre>
-    <div class="chart" data-signed data-unit="%" data-title="+ LTO → + -march (same compiler, same flags otherwise)">
-      B_STEP_MARCH_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="+ LTO → + -march (same compiler, same flags otherwise)">
+      <div data-value="167.2">Buffer.swap16 8 KiB holdout</div>
+      <div data-value="4.6">event-loop p99.9 under GC</div>
+      <div data-value="3.9">record churn under GC</div>
+      <div data-value="1.6">process startup</div>
+      <div data-value="1.1">HTTP/1.1 req/s</div>
+      <div data-value="0.9">JSON.parse</div>
+      <div data-value="-1.9">JSON.stringify</div>
+      <div data-value="-1.9">allocate 2M objects</div>
+      <div data-value="-2.3">HTTP, 4 Workers + reusePort</div>
     </div>
     <p class="muted"><strong><code>-mtune</code> is free; <code>-march</code> is a contract.</strong> On a CPU older than Haswell / Zen 1 the binary dies with SIGILL. Watch generic VM CPU models.</p>
-  </section>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>+2.8%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
   <section data-core>
     <h2>Step 5: profile-guided optimization</h2>
@@ -94,45 +129,63 @@
       <div class="arrow">→</div>
       <div class="step"><b>3 · Merge + rebuild</b><code>llvm-profdata --weighted-input</code>, <code>-fprofile-use</code></div>
     </div>
-    <div class="chart" data-signed data-unit="%" data-title="+ -march → + PGO">
-      B_STEP_PGO_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="+ -march → + PGO">
+      <div data-value="16.1">HTTP/1.1 req/s</div>
+      <div data-value="14.0">HTTP, 4 Workers + reusePort</div>
+      <div data-value="13.5">JSON.parse</div>
+      <div data-value="13.0">event-loop p99.9 under GC</div>
+      <div data-value="11.8">allocate 2M objects</div>
+      <div data-value="6.3">process startup</div>
+      <div data-value="6.2">record churn under GC</div>
+      <div data-value="2.4">JSON.stringify</div>
     </div>
-  </section>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>+8.0%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
   <section data-core>
     <h2>PGO: you get what you train</h2>
-    <div class="cols">
-      <div class="stat bad"><span class="stat-value">−93%</span><span class="stat-label"><code>buf.swap16()</code> when the training corpus never called it: its loop was optimized for size</span></div>
-      <div class="stat good"><span class="stat-value">+1,457%</span><span class="stat-label">after adding a few swaps to the corpus (same source)</span></div>
+    <p class="lead">It optimizes what the training corpus exercises, and can pessimize what it doesn't.</p>
+    <div class="chart" data-signed data-unit="%" data-title="our PGO step (+march → +PGO), by how well the corpus covers it">
+      <div data-value="47.9">JSON.parse RPC message · heavily trained</div>
+      <div data-value="13.5">JSON.parse 0.5 MiB · trained</div>
+      <div data-value="5.1">JSON.stringify RPC message · lightly trained</div>
+      <div data-value="2.4">JSON.stringify 0.5 MiB · lightly trained</div>
+      <div data-value="-7.9">gzip level 1 · not in the corpus</div>
     </div>
-    <ul style="margin-top:18px">
-      <li>Train on what production runs: weight the corpus like your traffic.</li>
-      <li>A narrow corpus overfits: a JSON-only profile made escaped strings slower.</li>
-      <li>Retrain on every Node version bump. V8's Torque/CSA builtins aren't reached by Clang PGO.</li>
-    </ul>
-    <p class="source">Clang IR-PGO, Node 26.5, EPYC 9355P</p>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">−93%</span><span class="stat-label"><code>buf.swap16()</code> when the corpus never called it (the extreme case)</span></div>
+      <div class="stat good"><span class="stat-value">+1,457%</span><span class="stat-label">after adding a few swaps to the corpus, same source</span></div>
+    </div>
+    <p class="source">Chart: this A/B, EPYC 9355P, Node 26.10 · swap16: Clang IR-PGO, Node 26.5</p>
+    <aside class="notes">Weight the corpus like production traffic. A JSON-only profile made escaped strings slower. Retrain on every Node bump; V8's Torque builtins aren't reached by Clang PGO.</aside>
   </section>
 
   <section data-core>
     <h2>Step 6: pointer compression, half the heap</h2>
     <pre><code class="language-bash">./configure --experimental-enable-pointer-compression   # 32-bit tagged pointers</code></pre>
     <div class="stats">
-      <div class="stat good"><span class="stat-value">B_PC_HEAP</span><span class="stat-label">live V8 heap, 1M records</span></div>
-      <div class="stat good"><span class="stat-value">B_PC_RSS</span><span class="stat-label">RSS, 2M-object graph</span></div>
-      <div class="stat good"><span class="stat-value">B_PC_ALLOC</span><span class="stat-label">allocation throughput</span></div>
-      <div class="stat good"><span class="stat-value">B_PC_GC</span><span class="stat-label">full GC pause</span></div>
+      <div class="stat good"><span class="stat-value">−49%</span><span class="stat-label">live V8 heap, 1M records</span></div>
+      <div class="stat good"><span class="stat-value">−61%</span><span class="stat-label">RSS, 2M-object graph</span></div>
+      <div class="stat good"><span class="stat-value">+130%</span><span class="stat-label">allocation throughput</span></div>
     </div>
-    <div class="chart" data-signed data-unit="%" data-title="+ PGO → + pointer compression" style="margin-top:14px">
-      B_STEP_PC_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="+ PGO → + pointer compression, everything else" style="margin-top:14px">
+      <div data-value="68.7">record churn under GC</div>
+      <div data-value="55.4">event-loop p99.9 under GC</div>
+      <div data-value="7.6">HTTP, 4 Workers + reusePort</div>
+      <div data-value="4.6">process startup</div>
+      <div data-value="3.9">HTTP/1.1 req/s</div>
+      <div data-value="-4.0">JSON.stringify</div>
+      <div data-value="-5.4">JSON.parse</div>
     </div>
-  </section>
+  <p class="source">Geomean over 58–60 workload metrics: <strong>+6.5%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs</p>
+    </section>
 
   <section>
     <h2>Pointer compression: the fine print</h2>
     <div class="cols-3">
       <div class="card warn"><span class="card-title">4 GiB heap per isolate</span>Each Worker gets its own cage, so a process with Workers can still use more in total.</div>
       <div class="card bad"><span class="card-title">A different addon ABI</span>Prebuilt <code>.node</code> binaries for stock Node crash: rebuild native addons. N-API addons work; old V8-API addons don't.</div>
-      <div class="card warn"><span class="card-title">Some code gets slower</span>Decompressing pointers costs a little on pointer-heavy hot loops: B_PC_COST</div>
+      <div class="card warn"><span class="card-title">Some code gets slower</span>Decompressing pointers costs a little on pointer-heavy hot loops: JSON.stringify escaped strings 1.8 MiB −31%, JSON.stringify 512-value batch −16%.</div>
     </div>
     <p class="callout">Memory is what you pay for. This is the single biggest memory win we have, and production runs it.</p>
   </section>
@@ -140,17 +193,39 @@
   <section data-core>
     <h2>Step 7: customize V8</h2>
     <p class="lead">A 60-line patch adds <code>v8::ArrayBufferView::CopyArrayBufferViewBytes</code>, so <code>Buffer.copy</code> copies between views without materializing their ArrayBuffers.</p>
-    <div class="chart" data-signed data-unit="%" data-title="same Clang 23 build: the patch off → on">
-      B_STEP_V8_ROWS
+    <div class="chart compact" data-signed data-unit="%" data-title="same Clang 23 build: the patch off → on">
+      <div data-value="51.8">Buffer.copy 64 B</div>
+      <div data-value="49.0">Buffer frame encode/decode 256 B</div>
+      <div data-value="19.0">Buffer.copy 4 KiB</div>
+      <div data-value="7.5">Buffer.copy 16 KiB holdout</div>
+      <div data-value="2.1">allocate 2M objects</div>
+      <div data-value="1.3">record churn under GC</div>
+      <div data-value="1.3">process startup</div>
+      <div data-value="-1.3">HTTP/1.1 req/s</div>
+      <div data-value="-8.1">Buffer.copy 128 KiB, storage chunk</div>
+      <div data-value="-9.8">event-loop p99.9 under GC</div>
     </div>
     <p class="muted">It's your runtime: small, targeted patches (and upstreaming them) are fair game. Rebase them on every release, and run the full test suite.</p>
-    <p class="source">The same change is proposed upstream as nodejs/node#63892.</p>
+    <p class="source">Geomean over 58–60 workload metrics: <strong>+2.2%</strong> · EPYC 9355P · Node 26.10 · median of 4 interleaved runs · proposed upstream as nodejs/node#63892</p>
   </section>
 
   <section data-core>
     <h2>All together: step by step</h2>
-    B_TABLE
-    <p class="source">Median of interleaved runs · EPYC 9355P · Node 26.10.0 · each column is one step on its own (the V8 patch: the same Clang 23 build, patch off vs on)</p>
+    <table class="data dense-table"><thead><tr><th></th><th class="num">+mimalloc</th><th class="num">Clang 23</th><th class="num">+LTO</th><th class="num">+march</th><th class="num">+PGO</th><th class="num">+ptr comp.</th><th class="num">+V8 patch</th><th class="num">total</th></tr></thead><tbody>
+      <tr><td>HTTP/1.1 req/s</td><td class="num ">+2%</td><td class="num ">+1%</td><td class="num win">+4%</td><td class="num ">+1%</td><td class="num win">+16%</td><td class="num win">+4%</td><td class="num ">−1%</td><td class="num win">+28%</td></tr>
+      <tr><td>HTTP, 4 Workers + reusePort</td><td class="num ">+1%</td><td class="num ">+1%</td><td class="num win">+3%</td><td class="num loss">−2%</td><td class="num win">+14%</td><td class="num win">+8%</td><td class="num ">−0%</td><td class="num win">+26%</td></tr>
+      <tr><td>JSON.parse</td><td class="num ">−1%</td><td class="num ">−1%</td><td class="num ">+0%</td><td class="num ">+1%</td><td class="num win">+13%</td><td class="num loss">−5%</td><td class="num ">+1%</td><td class="num win">+8%</td></tr>
+      <tr><td>JSON.stringify</td><td class="num ">−0%</td><td class="num ">−1%</td><td class="num ">−1%</td><td class="num ">−2%</td><td class="num win">+2%</td><td class="num loss">−4%</td><td class="num ">+1%</td><td class="num loss">−4%</td></tr>
+      <tr><td>allocate 2M objects</td><td class="num win">+3%</td><td class="num ">+1%</td><td class="num ">−2%</td><td class="num ">−2%</td><td class="num win">+12%</td><td class="num win">+130%</td><td class="num win">+2%</td><td class="num win">+166%</td></tr>
+      <tr><td>record churn under GC</td><td class="num ">−1%</td><td class="num loss">−4%</td><td class="num win">+3%</td><td class="num win">+4%</td><td class="num win">+6%</td><td class="num win">+69%</td><td class="num ">+1%</td><td class="num win">+85%</td></tr>
+      <tr><td>process startup</td><td class="num loss">−2%</td><td class="num loss">−8%</td><td class="num win">+3%</td><td class="num ">+2%</td><td class="num win">+6%</td><td class="num win">+5%</td><td class="num ">+1%</td><td class="num win">+7%</td></tr>
+      <tr><td>event-loop p99.9 under GC</td><td class="num ">+1%</td><td class="num loss">−3%</td><td class="num win">+7%</td><td class="num win">+5%</td><td class="num win">+13%</td><td class="num win">+55%</td><td class="num loss">−10%</td><td class="num win">+62%</td></tr>
+      <tr><td>Buffer.copy 64 B</td><td class="num ">+0%</td><td class="num ">+1%</td><td class="num ">+2%</td><td class="num loss">−2%</td><td class="num win">+40%</td><td class="num ">−1%</td><td class="num win">+52%</td><td class="num win">+110%</td></tr>
+      <tr><td>RSS saved, 2M-object graph</td><td class="num win">+5%</td><td class="num ">−1%</td><td class="num ">−1%</td><td class="num ">−1%</td><td class="num ">+1%</td><td class="num win">+61%</td><td class="num win">+2%</td><td class="num win">+63%</td></tr>
+      <tr><td>live heap saved, 1M records</td><td class="num ">+0%</td><td class="num ">+0%</td><td class="num ">+0%</td><td class="num ">−0%</td><td class="num ">+0%</td><td class="num win">+49%</td><td class="num ">−0%</td><td class="num win">+49%</td></tr>
+      <tr><td>full GC pause, 1M records</td><td class="num ">+0%</td><td class="num ">−1%</td><td class="num ">−0%</td><td class="num win">+4%</td><td class="num win">+19%</td><td class="num ">+0%</td><td class="num ">−1%</td><td class="num win">+21%</td></tr>
+    </tbody></table>
+    <p class="source">Median of interleaved runs · EPYC 9355P · Node 26.10.0 · each column is one step on its own (the V8 patch: the same Clang 23 build, patch off vs on) · + is better</p>
   </section>
 
   <section>
