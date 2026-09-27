@@ -13,6 +13,7 @@
     "bench:bitmap": "node --expose-gc benchmarks/bitmap.mjs",
     "bench:cache": "node --expose-gc benchmarks/cache.mjs",
     "bench:closures": "node --expose-gc benchmarks/closures.mjs",
+    "bench:cluster": "node benchmarks/cluster-vs-workers.mjs",
     "bench:cross-thread": "node --expose-gc benchmarks/cross-thread.mjs",
     "bench:fast-time": "node --expose-gc benchmarks/fast-time.mjs",
     "bench:fs": "node --expose-gc benchmarks/fs-sync-vs-async.mjs",
@@ -51,5 +52,8 @@
     "@nxtedition/shared": "^6.0.8",
     "@nxtedition/slice": "^2.1.1",
     "@nxtedition/timers": "^1.1.16"
+  },
+  "devDependencies": {
+    "autocannon": "^8.0.0"
   }
 }
