@@ -74,7 +74,7 @@ if (!isMainThread) {
     [`main thread, batches of ${BATCH} + yield`]: async ({ db }) => {
       const del = db.prepare('DELETE FROM cache WHERE k IN (SELECT k FROM cache WHERE expires < ? LIMIT ?)')
       while (del.run(NOW, BATCH).changes > 0) await yieldToLoop()
-      db.exec('PRAGMA wal_checkpoint(PASSIVE)')
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
     },
     'Worker, own connection': async ({ file }) => {
       const w = new Worker(new URL(import.meta.url), { workerData: { file } })

@@ -1,0 +1,2 @@
+MacBook Pro, Apple M3 Pro, macOS 26 (APFS, internal SSD)
+Node v26.10.0, SQLite 3.53.4, run natively (not in Docker)

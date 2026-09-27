@@ -34,6 +34,23 @@ byId.get(42)                                                   // no Promise, no
     <p class="source">benchmarks/sqlite-pragmas.mjs · NVMe RAID1 (Samsung PM9A3) · log scale</p>
   </section>
 
+  <section data-core>
+    <h2>Contending writers: fewer rows, long stalls</h2>
+    <p class="lead">One writer per file. Eight Workers on one file don't add throughput: they queue in SQLite's busy handler.</p>
+    <div class="chart" data-unit="rows/s" data-title="INSERT one 256 B row per statement, total across writers">
+      <div data-value="85108" data-display="85K">WAL + NORMAL · 1 writer</div>
+      <div class="bad" data-value="59733" data-display="60K" data-note="−30%">WAL + NORMAL · 8 Workers, one file</div>
+      <div data-value="16374" data-display="16K">WAL + FULL · 1 writer</div>
+      <div class="bad" data-value="10118" data-display="10K" data-note="−38%">WAL + FULL · 8 Workers, one file</div>
+    </div>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">1.4–3.2 s</span><span class="stat-label">the slowest single insert with 8 writers, in every journal mode</span></div>
+      <div class="card warn"><span class="card-title">The busy handler sleeps</span>A waiting writer sleeps and retries until <code>timeout</code>. With <code>DatabaseSync</code>, that sleep blocks the calling thread.</div>
+    </div>
+    <p class="source">benchmarks/sqlite-contention.mjs · 3 s per case, busy timeout 5 s · MacBook Pro M3 Pro · Node 26.10</p>
+    <aside class="notes">Rollback journal: 4.1K → 3.8K rows/s; WAL + OFF: 104K → 72K. Fix: funnel writes through one connection, or shard (next slide).</aside>
+  </section>
+
   <section>
     <h2>A pragma recipe for a cache</h2>
     <pre class="big"><code class="language-sql">PRAGMA journal_mode = WAL;          -- readers never block the writer
@@ -64,9 +81,9 @@ PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict
   <section>
     <h2>Keep maintenance off the event loop</h2>
     <div class="chart" data-unit="ms" data-title="delete 20K expired of 200K rows, then checkpoint: the longest event-loop stall">
-      <div class="bad" data-value="167.9">main thread, one statement</div>
-      <div class="good" data-value="11.7" data-note="14×">① batches of 500, yield in between</div>
-      <div class="good" data-value="1.7" data-note="99×">② a Worker with its own connection</div>
+      <div class="bad" data-value="275.5">main thread, one statement</div>
+      <div class="good" data-value="9.5" data-note="29×">① batches of 500, yield in between</div>
+      <div class="good" data-value="1.6" data-note="172×">② a Worker with its own connection</div>
     </div>
     <div class="cols">
       <div>
@@ -87,7 +104,7 @@ db.prepare('DELETE FROM cache WHERE expires &lt; ?').run(now)
 db.exec('PRAGMA wal_checkpoint(TRUNCATE)')</code></pre>
       </div>
     </div>
-    <p class="muted">The total work is the same, ~167 ms. Combine them: in WAL mode the Worker doesn't block readers, but it still holds the write lock, so batch there too.</p>
-    <p class="source">benchmarks/sqlite-maintenance.mjs · WAL, synchronous=NORMAL · EPYC 9355P · Node 26.10</p>
+    <p class="muted">Batches were faster in total too: 142 ms vs 274 ms in one go. Combine them: in WAL mode the Worker doesn't block readers, but it still holds the write lock, so batch there too.</p>
+    <p class="source">benchmarks/sqlite-maintenance.mjs · WAL, synchronous=NORMAL · median of 5 · MacBook Pro M3 Pro · Node 26.10</p>
   </section>
 </section>

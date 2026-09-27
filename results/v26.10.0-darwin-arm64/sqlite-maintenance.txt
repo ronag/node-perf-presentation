@@ -1,0 +1,5 @@
+sqlite 3.53.4, dir /tmp/sqlite-maint-8jeeA3: delete 20,000 expired of 200,000 rows (256 B), then checkpoint. Median of 5.
+
+  main thread, one statement           max event-loop gap   275.5 ms   total   274.2 ms
+  main thread, batches of 500 + yield  max event-loop gap     9.5 ms   total   142.0 ms
+  Worker, own connection               max event-loop gap     1.6 ms   total   257.7 ms

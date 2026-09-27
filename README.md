@@ -31,7 +31,7 @@ Open the speaker view on the laptop and drag the main window to the projector.
 ### Core path vs full deck
 
 The deck has ~140 slides, far more than 30 minutes allow.
-- **Core path (`?core`).** 37 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
+- **Core path (`?core`).** 38 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
 - **Full deck.** Without `?core` everything is shown, for depth and Q&A. Backup chapters are uncounted.
 
 | Part | Core slides | ⏱ target |
@@ -39,7 +39,7 @@ The deck has ~140 slides, far more than 30 minutes allow.
 | Title, compute is cheap / memory is not | 2 | 0:00–2:30 |
 | Build your own Node: official → 0 tune → 1 mimalloc → 2 Clang 23 → 3 LTO → 4 -march → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 2:30–10:00 |
 | GC semi-space, async/await cost, async return pattern, sync I/O (12× / 190×) | 4 | 10:00–13:00 |
-| SQLite: prepare once, durability, sharding | 3 | 13:00–15:30 |
+| SQLite: prepare once, durability, contending writers, sharding | 4 | 13:00–15:30 |
 | Workers + reusePort, thread pool, ring buffer | 3 | 15:30–17:30 |
 | Bitmaps, Slice, `Buffer.poolSize` | 3 | 17:30–19:30 |
 | HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 3 | 19:30–21:30 |
