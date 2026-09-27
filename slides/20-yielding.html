@@ -46,17 +46,43 @@ for (const row of db.prepare('SELECT * FROM huge_table').iterate()) {
 
   <section>
     <h2>How it works</h2>
-    <pre><code class="language-javascript">let yieldTime = performance.now()
-let yieldTimeout = 40                 // ms budget between yields
+    <div class="cols">
+      <div>
+        <div class="col-label">The check: a clock read</div>
+        <pre><code class="language-javascript">let yieldTime = performance.now()
+const budget = 40                // ms between yields
 
-function shouldYield (timeout = yieldTimeout) {
-  return performance.now() - yieldTime >= timeout
+function shouldYield () {
+  return performance.now() - yieldTime &gt;= budget
 }
 
 function maybeYield () {
-  // null on the fast path; otherwise queue and drain in a batch via setImmediate
+  // null on the fast path: no Promise, no await
   return shouldYield() ? doYield() : null
 }</code></pre>
+      </div>
+      <div>
+        <div class="col-label">The yield: one setImmediate for all waiters</div>
+        <pre><code class="language-javascript">const queue = []
+let scheduled = false
+
+function doYield () {
+  const p = new Promise((resolve) =&gt; queue.push(resolve))
+  if (!scheduled) {
+    scheduled = true
+    setImmediate(drain)          // I/O runs before this
+  }
+  return p
+}
+
+function drain () {
+  scheduled = false
+  yieldTime = performance.now()  // a fresh budget
+  for (const resolve of queue.splice(0)) resolve()
+}</code></pre>
+      </div>
+    </div>
     <p class="callout">Yielding lets you use sync APIs (<code>readFileSync</code>, <code>DatabaseSync</code>) on the main thread without starving the loop. Do real work, yield, repeat.</p>
+    <p class="source">Simplified from <span class="npm-badge">@nxtedition/yield</span>: the real one also takes a callback + opaque instead of a Promise, and drains in budgeted slices.</p>
   </section>
 </section>

@@ -2,7 +2,7 @@
 // results/<node version>/<name>.txt. Numbers in the slides come from running
 // this inside Docker on an AMD EPYC 9355P, pinned to one core:
 //   docker run --rm --cpuset-cpus=4 -v $PWD:/bench -w /bench node:26.10.0 node scripts/bench-all.mjs
-// Threaded benchmarks (cross-thread, sqlite-cache-shards, uv-threadpool) need more cores.
+// Threaded benchmarks (cross-thread, sqlite-cache-shards, sqlite-contention, res-write, uv-threadpool) need more cores.
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,6 +16,8 @@ const runs = [
   ['cross-thread'], ['fast-time'], ['fs-sync-vs-async'], ['function-queue'], ['gc-pressure'],
   ['intrusive-containers'], ['map-same-key'], ['slice'], ['streams'], ['subarray-vs-slice'],
   ['timers'], ['url'], ['sqlite-pragmas'], ['sqlite-cache-shards', {}, 'sqlite-cache-shards', []],
+  ['sqlite-contention', {}, 'sqlite-contention', []], ['sqlite-maintenance', {}, 'sqlite-maintenance', []],
+  ['res-write', {}, 'res-write', []],
   ['poolsize', {}, 'poolsize-default'],
   ['poolsize', { BUFFER_POOL_SIZE: '1048576' }, 'poolsize-1mib'],
   ['semi-space', {}, 'semi-space-default'],

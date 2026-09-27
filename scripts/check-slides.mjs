@@ -2,6 +2,7 @@
 // problems (content outside the 1280×720 canvas, scrolling code blocks,
 // unfilled chart values).
 // Usage: npm start & node scripts/check-slides.mjs [outDir]
+//        ONLY='<title regex>' renders just the matching slides
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -69,7 +70,9 @@ try {
   })`)
 
   const problems = []
+  const only = process.env.ONLY ? new RegExp(process.env.ONLY, 'i') : null   // e.g. ONLY='maintenance|how it works'
   for (const [n, s] of slides.entries()) {
+   if (only && !only.test(s.title)) continue
    for (let attempt = 1; attempt <= 2; attempt++) {
     try {
     await evaluate(`Reveal.slide(${s.h}, ${s.v}, 99); fitCode(Reveal.getCurrentSlide())`)

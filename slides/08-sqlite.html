@@ -63,14 +63,31 @@ PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict
 
   <section>
     <h2>Keep maintenance off the event loop</h2>
-    <div class="cols">
-      <div class="card bad"><span class="card-title">On the main thread</span><code>DELETE</code> of 20K expired rows plus a checkpoint: a <strong>180 ms</strong> event-loop stall.</div>
-      <div class="card good"><span class="card-title">In a Worker with its own connection</span>Same work, WAL lets both proceed: max tick gap <strong>5.8 ms</strong>.</div>
+    <div class="chart" data-unit="ms" data-title="delete 20K expired of 200K rows, then checkpoint: the longest event-loop stall">
+      <div class="bad" data-value="167.9">main thread, one statement</div>
+      <div class="good" data-value="11.7" data-note="14×">① batches of 500, yield in between</div>
+      <div class="good" data-value="1.7" data-note="99×">② a Worker with its own connection</div>
     </div>
-    <pre style="margin-top:14px"><code class="language-javascript">for (const row of db.prepare('SELECT * FROM big').iterate()) { // a cursor
-  process(row)
-  const p = maybeYield(); if (p) await p   // and yield (see Yielding)
+    <div class="cols">
+      <div>
+        <div class="col-label good">① Break it into batches and yield</div>
+        <pre><code class="language-javascript">import { setImmediate } from 'node:timers/promises'
+
+const del = db.prepare(`DELETE FROM cache WHERE k IN
+  (SELECT k FROM cache WHERE expires &lt; ? LIMIT 500)`)
+while (del.run(now).changes &gt; 0) {
+  await setImmediate()   // let I/O in
 }</code></pre>
-    <p class="source">Production measurement</p>
+      </div>
+      <div>
+        <div class="col-label good">② Move it to a Worker</div>
+        <pre><code class="language-javascript">// maintenance.mjs runs in a Worker, own connection
+const db = new DatabaseSync('cache.db', { timeout: 1000 })
+db.prepare('DELETE FROM cache WHERE expires &lt; ?').run(now)
+db.exec('PRAGMA wal_checkpoint(TRUNCATE)')</code></pre>
+      </div>
+    </div>
+    <p class="muted">The total work is the same, ~167 ms. Combine them: in WAL mode the Worker doesn't block readers, but it still holds the write lock, so batch there too.</p>
+    <p class="source">benchmarks/sqlite-maintenance.mjs · WAL, synchronous=NORMAL · EPYC 9355P · Node 26.10</p>
   </section>
 </section>
