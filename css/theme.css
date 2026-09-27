@@ -428,18 +428,6 @@ html.reveal-print .reveal .chart-bar { transition: none; }
 .reveal .flow .arrow { align-self: center; color: var(--faint); font-size: 1.4em; }
 
 /* Mental-model cost map */
-.reveal .costmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.reveal .costmap .cost {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px 16px;
-  font-size: 0.6em;
-  color: var(--muted);
-  line-height: 1.4;
-}
-.reveal .costmap .cost b { display: block; font-size: 1.15em; color: var(--r-heading-color); margin-bottom: 4px; }
-.reveal .costmap .cost .ch { float: right; font-size: 0.85em; font-weight: 750; color: var(--accent); }
 
 /* Timeline / event loop strips */
 .reveal .strip { display: flex; gap: 3px; height: 34px; border-radius: 6px; overflow: hidden; margin: 6px 0 12px; }
@@ -564,7 +552,7 @@ html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
 .reveal .section-header .npm-badge { font-size: 0.7em; }
 
 /* Grid children may shrink below their content width (code fits instead of overflowing) */
-.reveal :is(.cols, .cols-3, .cols-4, .cols-2-1, .cols-1-2, .costmap) > * { min-width: 0; }
+.reveal :is(.cols, .cols-3, .cols-4, .cols-2-1, .cols-1-2) > * { min-width: 0; }
 .reveal :is(.cols, .cols-2-1, .cols-1-2) pre { font-size: 0.54em; }
 
 .reveal table.dense-table { font-size: 0.5em; }
