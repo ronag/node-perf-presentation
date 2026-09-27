@@ -2,21 +2,28 @@
 
 Raw results behind the "Build your own Node" chapter.
 
-- `ab8.md`: JSON with every metric's median ± MAD per image, followed by a Markdown table. Produced by `run-ab.mjs`.
+- `ab9-znver5.md`: JSON with every metric's median ± MAD per image, followed by a Markdown table. Produced by `run-ab.mjs`.
 - `run-ab.mjs`: the interleaved A/B runner. It takes any number of `label=image[+fast|+glibc|+mimalloc]` arguments and runs the nxt `workloads.mjs` suite in each image on pinned cores.
-- `ab-build-args.patch`: adds `NODE_TARGET_FLAGS`, `PGO`, `LTO` and `V8_PATCH` build args to the nxt node Dockerfile (`docker/swarm/base/node`) so each step can be built in isolation.
+- `ab-build-args.patch`: adds `LLVM_VERSION`, `NODE_TARGET_FLAGS`, `PGO`, `LTO` and `V8_PATCH` build args to the nxt node Dockerfile (`docker/swarm/base/node`), so each step can be built on its own.
+- `build-z5.sh`, `build-c20.sh`: the builds, run in a `docker:cli` container on the host. `z5-bench.sh`: the benchmark run after them.
+- `previous/`: the earlier 8-way run (x86-64-v3, Clang 23 before LTO), superseded.
 
-Images (all Node v26.10.0, built on tv2k-srv4, an AMD EPYC 9355P):
+Images (all Node v26.10.0, built on tv2k-srv4, an AMD EPYC 9355P, Zen 5). Each adds one step to the previous one:
 
 | label | image | build args |
 |---|---|---|
-| official | node:26.10.0-trixie-slim | — |
-| omimalloc | node:26.10.0-trixie-slim + LD_PRELOAD mimalloc | — |
-| clang23 | ab-26.10.0-nolto-nopatch | `PGO=0 LTO=0 V8_PATCH=0 NODE_TARGET_FLAGS=` |
-| v8patch | ab-26.10.0-nolto | `PGO=0 LTO=0 NODE_TARGET_FLAGS=` |
-| lto | ab-26.10.0-base | `PGO=0 NODE_TARGET_FLAGS=` |
-| march | ab-26.10.0-march | `PGO=0` |
-| pgo | nxtedition/node:26.10.0 | production recipe |
-| pc | nxtedition/node:26.10.0-pc | production recipe + `POINTER_COMPRESSION=1` |
+| official | node:26.10.0-trixie-slim | Clang 20.1, no LTO, glibc malloc |
+| omimalloc | the same + LD_PRELOAD mimalloc | — |
+| c20 | ab-26.10.0-c20 | `LLVM_VERSION=20 PGO=0 LTO=0 V8_PATCH=0 NODE_TARGET_FLAGS=` (the control: our build with the official compiler) |
+| lto | ab-26.10.0-c20-lto | + `LTO=1` |
+| znver5 | ab-26.10.0-c20-lto-z5 | + `NODE_TARGET_FLAGS="-march=znver5 -mtune=znver5"` |
+| clang23 | ab-26.10.0-c23-lto-z5 | + `LLVM_VERSION=23` |
+| pgo | ab-26.10.0-c23-lto-z5-pgo | + `PGO=1` |
+| pc | ab-26.10.0-c23-lto-z5-pgo-pc | + `POINTER_COMPRESSION=1` |
+| v8 | ab-26.10.0-c23-lto-z5-pgo-pc-v8 | + `V8_PATCH=1` |
 
 Every custom image runs mimalloc with `MIMALLOC_PURGE_DELAY=1000`.
+
+Checked before benchmarking: `process.config` reports the compiler, LTO and pointer compression each image should have, and the znver5 images carry about twice as many AVX-512 (`zmm`) instructions (171K vs 81K from runtime-dispatched code).
+
+apt.llvm.org's trixie LLVM 20 packages ship no `LLVMgold.so`, so an LTO link with bfd fails. The Clang 20 images use the bookworm build of the same 20.1.8 release, which has it.

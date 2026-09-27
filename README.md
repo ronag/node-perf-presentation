@@ -37,7 +37,7 @@ The deck has ~140 slides, far more than 30 minutes allow.
 | Part | Core slides | ⏱ target |
 |---|---|---|
 | Title | 1 | 0:00–1:00 |
-| Build your own Node: official → 0 tune → 1 mimalloc → 2 Clang 23 → 3 LTO → 4 -march → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 2:30–10:00 |
+| Build your own Node: official → 0 tune → 1 mimalloc → 2 LTO → 3 -march=znver5 → 4 Clang 23 → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 1:00–10:00 |
 | GC semi-space, async/await cost, async return pattern, sync I/O (12× / 190×) | 4 | 10:00–13:00 |
 | SQLite: prepare once, durability, contending writers, sharding | 4 | 13:00–15:30 |
 | Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool, ring buffer | 4 | 15:30–17:30 |
@@ -107,12 +107,12 @@ Every step was built from the same Node 26.10.0 source and measured on tv2k-srv4
 |---|---|---|
 | official | `node:26.10.0-trixie-slim` | Clang 20.1, no LTO, glibc malloc |
 | 1 · allocator | the same + `LD_PRELOAD=libmimalloc.so`, `MIMALLOC_PURGE_DELAY=1000` | allocator only |
-| 2 · Clang 23 | built with Clang 23, no LTO, no V8 patch | compiler |
-| 3 · LTO | + `--enable-lto` | link-time optimization |
-| 4 · `-march` | + `-march=x86-64-v3 -mtune=znver3` via a compiler wrapper | ISA target |
+| (control) | our own build with Clang 20, no LTO | should match the official binary |
+| 2 · LTO | + `--enable-lto` | link-time optimization |
+| 3 · `-march` | + `-march=znver5 -mtune=znver5` via a compiler wrapper | ISA target: Zen 5, AVX-512 |
+| 4 · Clang 23 | the same with Clang 23 | compiler |
 | 5 · PGO | + two-pass Clang IR-PGO, 12 weighted training workloads | profile |
 | 6 · pointer compression | + `--experimental-enable-pointer-compression` | heap pointer width |
-| 7 · V8 patch | `ArrayBufferView::CopyArrayBufferViewBytes` (nodejs/node#63892) | measured on the Clang 23 build, patch off vs on |
+| 7 · V8 patch | + `ArrayBufferView::CopyArrayBufferViewBytes` (nodejs/node#63892) | the runtime itself |
 
-Steps 3–6 carry the V8 patch on both sides of each comparison, so each delta is that one step's effect.
-The A/B variants come from the production Dockerfile with four build args added: `NODE_TARGET_FLAGS`, `PGO`, `LTO` and `V8_PATCH`.
+Each image adds one step to the previous one, so each delta is that step's effect. The A/B variants come from the production Dockerfile with five build args added: `LLVM_VERSION`, `NODE_TARGET_FLAGS`, `PGO`, `LTO` and `V8_PATCH` (see `results/node-builds/`).

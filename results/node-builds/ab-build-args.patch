@@ -1,6 +1,56 @@
---- a/docker/swarm/base/node/Dockerfile	2026-09-26 13:41:58
-+++ b/docker/swarm/base/node/Dockerfile	2026-09-27 12:52:00
-@@ -91,7 +91,9 @@
+--- a/docker/swarm/base/node/Dockerfile
++++ b/docker/swarm/base/node/Dockerfile
+@@ -41,7 +41,13 @@
+ 
+ # Use the latest Clang/LLVM 23 packages from apt.llvm.org. Verify its
+ # signing-key fingerprint before adding the repository.
+-RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
++# A/B: LLVM_VERSION=20 matches the compiler of the official Node 26 binaries.
++ARG LLVM_VERSION=23
++ENV LLVM_VERSION=${LLVM_VERSION}
++# apt.llvm.org's trixie LLVM 20 packages ship no LLVMgold.so (bfd + LTO fails);
++# the bookworm build of the same 20.1.8 release has it and runs on trixie.
++RUN dist=trixie; if [ "${LLVM_VERSION}" = 20 ]; then dist=bookworm; fi; \
++  curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+     -o /tmp/llvm-snapshot.gpg.key \
+   && test "$(gpg --show-keys --with-colons /tmp/llvm-snapshot.gpg.key \
+     | awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }')" \
+@@ -50,25 +56,26 @@
+     -o /usr/share/keyrings/apt.llvm.org.gpg \
+     /tmp/llvm-snapshot.gpg.key \
+   && printf '%s\n' \
+-    'deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] https://apt.llvm.org/trixie/ llvm-toolchain-trixie-23 main' \
++    "deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] https://apt.llvm.org/${dist}/ llvm-toolchain-${dist}-${LLVM_VERSION} main" \
+     > /etc/apt/sources.list.d/llvm.list \
+   && apt-get update \
+   && apt-get install -y --no-install-recommends \
+-    clang-23 \
+-    libclang-rt-23-dev \
+-    llvm-23 \
++    clang-${LLVM_VERSION} \
++    libclang-rt-${LLVM_VERSION}-dev \
++    llvm-${LLVM_VERSION} \
+   && rm -rf /var/lib/apt/lists/*
+ 
+ COPY scripts/clang-wrapper.sh /usr/local/bin/node-clang
+ RUN chmod 0755 /usr/local/bin/node-clang \
+   && ln -s node-clang /usr/local/bin/node-clang++ \
+-  && test "$(clang-23 -dumpversion | cut -d. -f1)" = 23
++  && test "$(clang-${LLVM_VERSION} -dumpversion | cut -d. -f1)" = "${LLVM_VERSION}"
+ 
+-ENV AR=/usr/bin/llvm-ar-23
++ENV AR=/usr/bin/llvm-ar-${LLVM_VERSION}
+ ENV CC=/usr/local/bin/node-clang
+ ENV CXX=/usr/local/bin/node-clang++
+-ENV NM=/usr/bin/llvm-nm-23
+-ENV RANLIB=/usr/bin/llvm-ranlib-23
++ENV NM=/usr/bin/llvm-nm-${LLVM_VERSION}
++ENV RANLIB=/usr/bin/llvm-ranlib-${LLVM_VERSION}
++ENV LLVM_PROFDATA=/usr/bin/llvm-profdata-${LLVM_VERSION}
+ 
+ WORKDIR /build
+ 
+@@ -91,7 +98,9 @@
  # verbatim, already rebased on the merged #63828. Re-verify/regenerate on
  # NODE_VERSION bumps.
  COPY patches/buffer-copy-optimizations.patch /tmp/buffer-copy-optimizations.patch
@@ -11,7 +61,7 @@
  
  # Disable parallel/test-snapshot-reproducible before building. The test builds
  # the V8 startup snapshot twice and asserts the two are byte-for-byte identical,
-@@ -137,11 +139,18 @@
+@@ -137,11 +146,18 @@
  ARG POINTER_COMPRESSION=0
  
  ARG BUILD_JOBS=0
@@ -32,7 +82,7 @@
      $([ "${POINTER_COMPRESSION}" = "1" ] && echo --experimental-enable-pointer-compression) \
    && LLVM_PROFILE_FILE=/tmp/node-build-%m-%p.profraw \
      make -j"${build_jobs}"
-@@ -161,7 +170,8 @@
+@@ -161,7 +177,8 @@
  # process writing its own raw profiles, which are then merged with the weights
  # the driver emits — see scripts/pgo-train.mjs for what is trained and why.
  # TLS needs a certificate; generate a throwaway one rather than shipping a key.
@@ -42,7 +92,7 @@
    && rm -f /tmp/node-build-*.profraw \
    && mkdir -p /opt/pgo/driver /opt/pgo/profiles \
    && openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes \
-@@ -178,11 +188,12 @@
+@@ -178,11 +195,12 @@
  # Rebuild the same Node/V8 configuration with the freshly trained Clang IR
  # profile.
  ENV NODE_PGO_MODE=use
@@ -57,7 +107,7 @@
      $([ "${POINTER_COMPRESSION}" = "1" ] && echo --experimental-enable-pointer-compression) \
    && make -j"${build_jobs}"
  
-@@ -192,7 +203,7 @@
+@@ -192,7 +210,7 @@
  # target once per addon suite and redundantly relinking full-LTO Node/V8.
  # Node's own `run-ci` target deliberately invokes this subtarget with -j1
  # because its test runner and addon builders provide their own parallelism.
@@ -66,8 +116,37 @@
  
  # Install Node.js system-wide, and delete its bundled npm before /usr/local is
  # copied into the runtime stage, so npm never enters a published image layer.
---- a/docker/swarm/base/node/scripts/clang-wrapper.sh	2026-09-19 22:31:35
-+++ b/docker/swarm/base/node/scripts/clang-wrapper.sh	2026-09-27 11:54:00
+@@ -313,7 +331,10 @@
+ # packages in the same release series. Install this after the ordinary
+ # runtime packages because apt.llvm.org requires the CA bundle supplied above.
+ COPY --from=build-base /usr/share/keyrings/apt.llvm.org.gpg /usr/share/keyrings/apt.llvm.org.gpg
+-COPY --from=build-base /etc/apt/sources.list.d/llvm.list /etc/apt/sources.list.d/llvm.list
++# A/B: the build stage may use another LLVM_VERSION; addons always get 23.
++RUN printf '%s\n' \
++    'deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] https://apt.llvm.org/trixie/ llvm-toolchain-trixie-23 main' \
++    > /etc/apt/sources.list.d/llvm.list
+ RUN apt-get update && apt-get install -y --no-install-recommends \
+   clang-23 \
+   libclang-rt-23-dev \
+--- a/docker/swarm/base/node/scripts/clang-wrapper.sh
++++ b/docker/swarm/base/node/scripts/clang-wrapper.sh
+@@ -3,14 +3,14 @@
+ 
+ case "$0" in
+   *++)
+-    compiler=/usr/bin/clang++-23
++    compiler=/usr/bin/clang++-"${LLVM_VERSION:-23}"
+     # Debian's GCC 14 libstdc++ headers mark the shared_ptr atomic free functions
+     # used by V8's wasm headers deprecated. Clang emits thousands of identical
+     # diagnostics, overflowing BuildKit's log and hiding the actual build error.
+     diagnostic_flag=-Wno-deprecated-declarations
+     ;;
+   *)
+-    compiler=/usr/bin/clang-23
++    compiler=/usr/bin/clang-"${LLVM_VERSION:-23}"
+     # libffi deliberately does null-pointer arithmetic while deriving field
+     # alignment; Clang diagnoses that GNU extension once per generated target.
+     diagnostic_flag=-Wno-gnu-null-pointer-arithmetic
 @@ -29,11 +29,12 @@
  # Node's configure.py does not propagate ambient CFLAGS/CXXFLAGS into the
  # generated Node/V8 targets. Inject the target flags at the compiler boundary
