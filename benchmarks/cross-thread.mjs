@@ -1,168 +1,77 @@
-// Benchmark: Cross-thread communication patterns
-// MessagePort (postMessage) vs @nxtedition/shared ring buffer
-import { run, bench, group, summary } from 'mitata'
-import { MessageChannel } from 'node:worker_threads'
-import { alloc, reader, writer } from '@nxtedition/shared'
+// Benchmark: cross-thread message throughput between two threads.
+// MessagePort (structured clone) vs @nxtedition/shared ring buffer.
+// The main thread produces N fixed-size messages, a worker consumes them;
+// we time from the first send until the worker has seen the last message.
+import { Worker, isMainThread, workerData, parentPort } from 'node:worker_threads'
+import { once } from 'node:events'
+import { Writer, Reader } from '@nxtedition/shared'
 
-const SMALL = 64    // typical small message
-const MEDIUM = 1024 // typical medium message
+const N = 1_000_000
+const RUNS = 5
 
-// --- Ring buffer: write + read roundtrip ---
+if (!isMainThread) {
+  const { mode, handle, n } = workerData
+  if (mode === 'ring') {
+    const reader = new Reader(handle)
+    let received = 0
+    let checksum = 0
+    const onData = (data) => { checksum += data.buffer[data.byteOffset] }
+    parentPort.postMessage('ready')
+    while (received < n) {
+      const count = reader.readSome(onData)
+      received += count
+      if (count > 0) reader.flushSync() // hand the space back to the writer
+    }
+    parentPort.postMessage({ received, checksum })
+  } else {
+    let received = 0
+    parentPort.on('message', () => {
+      if (++received === n) parentPort.postMessage({ received })
+    })
+    parentPort.postMessage('ready')
+  }
+} else {
+  const median = (xs) => xs.toSorted((a, b) => a - b)[xs.length >> 1]
+  const write = (data, payload) => data.byteOffset + payload.copy(data.buffer, data.byteOffset)
 
-function makeRing() {
-  const shared = alloc(16 * 1024 * 1024)
-  return { w: writer(shared), r: reader(shared) }
+  async function runRing(size) {
+    const writer = new Writer(8 * 1024 * 1024)
+    const worker = new Worker(new URL(import.meta.url), { workerData: { mode: 'ring', handle: writer.handle, n: N } })
+    await once(worker, 'message')
+    const payload = Buffer.alloc(size, 1)
+    const start = performance.now()
+    for (let i = 0; i < N; i++) writer.writeSync(size, write, payload)
+    writer.flushSync()
+    await once(worker, 'message')
+    const ms = performance.now() - start
+    await worker.terminate()
+    return N / (ms / 1000)
+  }
+
+  async function runPort(size) {
+    const worker = new Worker(new URL(import.meta.url), { workerData: { mode: 'port', n: N } })
+    await once(worker, 'message')
+    const payload = new Uint8Array(size).fill(1)
+    const start = performance.now()
+    for (let i = 0; i < N; i++) worker.postMessage(payload)
+    await once(worker, 'message')
+    const ms = performance.now() - start
+    await worker.terminate()
+    return N / (ms / 1000)
+  }
+
+  const fmt = (x) => `${(x / 1e6).toFixed(2)} M msg/s`
+  for (const size of [64, 1024]) {
+    const port = []
+    const ring = []
+    for (let r = 0; r < RUNS; r++) {
+      port.push(await runPort(size))
+      ring.push(await runRing(size))
+    }
+    const p = median(port)
+    const q = median(ring)
+    console.log(`${size} B messages, ${N.toLocaleString('en-US')} per run, median of ${RUNS}`)
+    console.log(`  MessagePort.postMessage  ${fmt(p)}`)
+    console.log(`  shared ring buffer       ${fmt(q)}  (${(q / p).toFixed(1)}×)`)
+  }
 }
-
-const ring1 = makeRing()
-
-summary(() => {
-  group(`write + read ${SMALL} bytes`, () => {
-    const buf = Buffer.alloc(SMALL, 0x42)
-
-    bench('ring buffer (write + read)', () => {
-      ring1.w.writeSync(SMALL, (data) => {
-        buf.copy(data.buffer, data.offset)
-        return data.offset + SMALL
-      })
-      ring1.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-const ring2 = makeRing()
-
-summary(() => {
-  group(`write + read ${MEDIUM} bytes`, () => {
-    const buf = Buffer.alloc(MEDIUM, 0x42)
-
-    bench('ring buffer (write + read)', () => {
-      ring2.w.writeSync(MEDIUM, (data) => {
-        buf.copy(data.buffer, data.offset)
-        return data.offset + MEDIUM
-      })
-      ring2.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-// --- Batch throughput ---
-
-const ring3 = makeRing()
-
-summary(() => {
-  group(`batch 100 × ${SMALL}b write + readSome`, () => {
-    const buf = Buffer.alloc(SMALL, 0x42)
-
-    bench('ring buffer corked batch 100', () => {
-      ring3.w.cork(() => {
-        for (let i = 0; i < 100; i++) {
-          ring3.w.writeSync(SMALL, (data) => {
-            buf.copy(data.buffer, data.offset)
-            return data.offset + SMALL
-          })
-        }
-      })
-      ring3.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-// --- postMessage vs ring buffer (write + immediate read to prevent fill) ---
-
-const { port1, port2 } = new MessageChannel()
-port2.on('message', () => {})
-
-const ring4 = makeRing()
-
-summary(() => {
-  group(`send ${SMALL} bytes`, () => {
-    const buf = Buffer.alloc(SMALL, 0x42)
-
-    bench('MessagePort postMessage', () => {
-      port1.postMessage(buf)
-    }).gc('inner')
-
-    bench('ring buffer writeSync + readSome', () => {
-      ring4.w.writeSync(SMALL, (data) => {
-        buf.copy(data.buffer, data.offset)
-        return data.offset + SMALL
-      })
-      ring4.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-const ring5 = makeRing()
-
-summary(() => {
-  group(`send ${MEDIUM} bytes`, () => {
-    const buf = Buffer.alloc(MEDIUM, 0x42)
-
-    bench('MessagePort postMessage', () => {
-      port1.postMessage(buf)
-    }).gc('inner')
-
-    bench('ring buffer writeSync + readSome', () => {
-      ring5.w.writeSync(MEDIUM, (data) => {
-        buf.copy(data.buffer, data.offset)
-        return data.offset + MEDIUM
-      })
-      ring5.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-// --- Object message (common pattern) ---
-
-const ring6 = makeRing()
-
-summary(() => {
-  group('send object message', () => {
-    const msg = { type: 'log', ts: Date.now(), level: 30, msg: 'hello' }
-
-    bench('MessagePort postMessage (object)', () => {
-      port1.postMessage(msg)
-    }).gc('inner')
-
-    bench('ring buffer (pre-serialized JSON)', () => {
-      ring6.w.writeSync(256, (data) => {
-        return data.offset + data.buffer.write(JSON.stringify(msg), data.offset)
-      })
-      ring6.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-// --- Batch postMessage vs ring buffer ---
-
-const ring7 = makeRing()
-
-summary(() => {
-  group('batch 100 messages', () => {
-    const buf = Buffer.alloc(SMALL, 0x42)
-
-    bench('MessagePort 100× postMessage', () => {
-      for (let i = 0; i < 100; i++) {
-        port1.postMessage(buf)
-      }
-    }).gc('inner')
-
-    bench('ring buffer corked 100× write + read', () => {
-      ring7.w.cork(() => {
-        for (let i = 0; i < 100; i++) {
-          ring7.w.writeSync(SMALL, (data) => {
-            buf.copy(data.buffer, data.offset)
-            return data.offset + SMALL
-          })
-        }
-      })
-      ring7.r.readSome(() => {})
-    }).gc('inner')
-  })
-})
-
-await run()
-
-port1.close()
-port2.close()

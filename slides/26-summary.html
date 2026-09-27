@@ -1,0 +1,43 @@
+<!-- SUMMARY & TAKEAWAYS -->
+<section id="summary">
+  <section class="section-header no-kicker">
+    <h2>Key Takeaways</h2>
+  </section>
+
+  <section data-core class="no-kicker">
+    <h2>Key takeaways</h2>
+    <ol class="takeaways">
+      <li class="fragment fade-up"><strong>Measure first</strong>, on the hardware you ship on. Then doubt the measurement.</li>
+      <li class="fragment fade-up"><strong>Build Node for your CPU and workload.</strong> <span class="muted">-march, PGO, pointer compression: TAKEAWAY_BUILD</span></li>
+      <li class="fragment fade-up"><strong>Compute is cheap, memory is not.</strong> <span class="muted">Every allocation is future GC work: reuse, pool with bounds, keep state dense.</span></li>
+      <li class="fragment fade-up"><strong>Sync beats async when the answer is ready.</strong> <span class="muted">An await costs ~100 calls; sync I/O is 12–190× faster.</span></li>
+      <li class="fragment fade-up"><strong>Don't block the loop.</strong> <span class="muted"><code>await</code> yields to microtasks, not I/O: yield on a budget and prioritize.</span></li>
+      <li class="fragment fade-up"><strong>SQLite: choose durability, batch, shard writers.</strong> <span class="muted">Up to 159× per row; +73% with 8 shards.</span></li>
+      <li class="fragment fade-up"><strong>Workers + reusePort + shared memory.</strong> <span class="muted">A ring buffer moves 34× more messages than postMessage.</span></li>
+      <li class="fragment fade-up"><strong>A few flags go a long way.</strong> <span class="muted"><code>--max-semi-space-size</code>, <code>Buffer.poolSize</code>, <code>UV_THREADPOOL_SIZE</code>: one line each.</span></li>
+    </ol>
+  </section>
+
+  <section class="no-kicker">
+    <h2>Libraries used</h2>
+    <table class="data">
+      <thead><tr><th>Package</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><span class="npm-badge">@nxtedition/timers</span></td><td>Pooled timers with callback + opaque</td></tr>
+        <tr><td><span class="npm-badge">@nxtedition/yield</span></td><td>Cooperative event-loop yielding on a time budget</td></tr>
+        <tr><td><span class="npm-badge">@nxtedition/scheduler</span></td><td>Priority scheduling, shareable across Workers</td></tr>
+        <tr><td><span class="npm-badge">@nxtedition/slice</span></td><td>Zero-alloc buffer slices and a pool allocator</td></tr>
+        <tr><td><span class="npm-badge">@nxtedition/shared</span></td><td>Lock-free SPSC ring buffer between threads</td></tr>
+        <tr><td><span class="npm-badge">@nxtedition/cache</span></td><td>Memory + sharded SQLite cache with a sync fast path</td></tr>
+      </tbody>
+    </table>
+    <p class="source">Benchmarks: <span class="npm-badge">mitata</span>. All code and raw results in the repo.</p>
+  </section>
+
+  <section data-core class="statement no-kicker">
+    <h2>Thank you!</h2>
+    <p class="lead">NodeConf EU 2026</p>
+    <p style="margin-top:18px">Slides, benchmarks &amp; raw results: <a href="https://github.com/ronag/node-perf-presentation">github.com/ronag/node-perf-presentation</a></p>
+    <p class="muted small">Robert Nagy · <a href="https://github.com/ronag">github.com/ronag</a></p>
+  </section>
+</section>

@@ -1,0 +1,61 @@
+clk: ~4.32 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+---------------------------------------------- -------------------------------
+• object allocation patterns
+---------------------------------------------- -------------------------------
+short-lived objects (young gen) 621.92 ps/iter 295.41 ps █                    
+                         (283.20 ps … 6.20 ns)   6.03 ns █▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁
+                     gc(  2.08 ms …   4.90 ms)   1.26  b (  0.11  b… 73.47  b)
+
+reused object (zero alloc)      905.00 ps/iter 461.18 ps █                    
+                         (349.12 ps … 4.61 ns)   4.39 ns █▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▁
+                     gc(  2.12 ms …   4.40 ms)   0.13  b (  0.11  b…  4.12  b)
+
+summary
+  short-lived objects (young gen)
+   1.46x faster than reused object (zero alloc)
+
+• batch 1000 object allocations
+---------------------------------------------- -------------------------------
+1000 new objects                  3.01 µs/iter   3.12 µs    █                 
+                          (2.59 µs … 14.86 µs)   3.86 µs ▄▇████▆▂▃▂▃▅▅▃▂▁▁▁▂▂▂
+                     gc(  2.20 ms …   4.32 ms)  75.50 kb ( 75.27 kb… 94.26 kb)
+
+1000 reused objects               1.04 µs/iter   1.11 µs █        ▂           
+                         (978.79 ns … 1.27 µs)   1.27 µs █▂▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▂
+                     gc(  2.26 ms …   5.30 ms)   8.00 kb (  7.90 kb…  8.00 kb)
+
+summary
+  1000 reused objects
+   2.89x faster than 1000 new objects
+
+• array patterns
+---------------------------------------------- -------------------------------
+new Array + push 100            150.69 ns/iter 143.66 ns   █                  
+                       (124.97 ns … 377.49 ns) 272.58 ns ▂▂█▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂
+                     gc(  2.21 ms …   4.74 ms)   2.31 kb (  2.31 kb…  2.31 kb)
+
+reused pre-allocated array 100   42.96 ns/iter  43.76 ns                    █ 
+                        (30.08 ns … 170.98 ns)  44.43 ns ▁▁▃▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▇█▃
+                     gc(  2.18 ms …   5.12 ms)   0.12  b (  0.11  b…  1.32  b)
+
+summary
+  reused pre-allocated array 100
+   3.51x faster than new Array + push 100
+
+• Map vs plain object for cache
+---------------------------------------------- -------------------------------
+new Map per operation            20.16 ns/iter  19.90 ns  █                   
+                         (19.65 ns … 24.61 ns)  22.51 ns ▃█▄▁▂▂▁▁▁▁▁▁▁▁▂▁▂▁▁▁▁
+                     gc(  2.18 ms …   8.50 ms) 184.18  b (184.13  b…188.14  b)
+
+plain object per operation      615.23 ps/iter 405.27 ps █                    
+                         (271.00 ps … 6.64 ns)   3.89 ns █▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁▁
+                     gc(  2.19 ms …   3.56 ms)   0.78  b (  0.11  b… 42.79  b)
+
+summary
+  plain object per operation
+   32.77x faster than new Map per operation

@@ -1,0 +1,34 @@
+clk: ~4.33 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                        avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------------ -------------------------------
+• remove + re-add a random item (N=10000)
+------------------------------------------------ -------------------------------
+intrusive array (swap-remove)      10.20 ns/iter  13.52 ns █                    
+                            (7.30 ns … 26.98 ns)  15.27 ns █▅▂▁▁▁▁▁▁▁▁▁▁▁▁▆█▂▁▁▂
+                       gc(  2.64 ms …   6.07 ms)   0.35  b (  0.17  b… 11.58  b)
+
+intrusive linked list              14.21 ns/iter  12.94 ns ▄█                   
+                          (12.62 ns … 164.89 ns)  19.13 ns ██▂▁▁▁▁▁▁▁▂▁▁▁▁▁▁▂▁▁▂
+                       gc(  2.68 ms …   5.48 ms)   0.18  b (  0.15  b…  2.73  b)
+
+Set (delete + add)                 59.51 ns/iter  59.42 ns   ▅██▃               
+                          (34.25 ns … 128.87 ns) 120.16 ns ▄█████▆▂▁▁▁▁▂▂▂▃▄▂▄▃▂
+                       gc(  2.78 ms …   5.78 ms)  29.02  b (  0.11  b…160.14  b)
+
+linked list (wrapper nodes + Map) 103.03 ns/iter  99.30 ns  ▅███                
+                          (77.66 ns … 174.02 ns) 170.31 ns ▄█████▂▁▁▁▁▁▁▁▂▃▄▃▄▃▂
+                       gc(  3.12 ms …   6.86 ms)  88.90  b ( 48.11  b…272.16  b)
+
+array (indexOf + splice)            4.00 µs/iter   4.11 µs   ▆ ▃  █  ▃   ▃      
+                             (3.79 µs … 4.31 µs)   4.26 µs ▆▆█▆████▆███▄▄█▆▆▄▆▁█
+                       gc(  3.02 ms …   5.58 ms)  56.17  b ( 56.11  b… 58.62  b)
+
+summary
+  intrusive array (swap-remove)
+   1.39x faster than intrusive linked list
+   5.83x faster than Set (delete + add)
+   10.1x faster than linked list (wrapper nodes + Map)
+   391.99x faster than array (indexOf + splice)

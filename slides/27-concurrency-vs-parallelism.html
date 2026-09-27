@@ -1,0 +1,50 @@
+<!-- CONCURRENCY VS PARALLELISM (backup) -->
+<section id="concurrency-vs-parallelism" data-chapter="Concurrency vs parallelism" data-appendix>
+  <section class="section-header">
+    <h2>Concurrency vs Parallelism</h2>
+    <p>Latency vs throughput, and the cost of both</p>
+  </section>
+
+  <section>
+    <h2>Two different goals</h2>
+    <div class="cols">
+      <div class="card good"><span class="card-title">Concurrency: interleaving</span>
+        <div class="diagram-box" style="margin:8px 0;padding:8px 10px"><div class="timeline"><span class="label">1 core</span><span class="bar work" style="width:34px"></span><span class="bar idle" style="width:22px"></span><span class="bar work" style="width:34px"></span><span class="bar idle" style="width:22px"></span><span class="bar work" style="width:34px"></span><span class="bar idle" style="width:22px"></span><span class="bar work" style="width:34px"></span></div></div>
+        Goal: <strong>latency</strong>. Don't block, switch while waiting on I/O. Event loop, async/await.</div>
+      <div class="card info"><span class="card-title">Parallelism: simultaneous</span>
+        <div class="diagram-box" style="margin:8px 0;padding:8px 10px">
+          <div class="timeline"><span class="label">core 1</span><span class="bar work" style="width:200px"></span></div>
+          <div class="timeline"><span class="label">core 2</span><span class="bar work" style="width:200px"></span></div>
+          <div class="timeline"><span class="label">core 3</span><span class="bar work" style="width:200px"></span></div>
+        </div>
+        Goal: <strong>throughput</strong>. Do more work per second. Workers, processes.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The hidden costs</h2>
+    <p class="lead">Both add absolute overhead. Sync and single-threaded is the cheapest unit of work.</p>
+    <div class="cols">
+      <div class="card good"><span class="card-title">Concurrency overhead</span>~74 ns per await · microtask queue · async context</div>
+      <div class="card info"><span class="card-title">Parallelism overhead</span>~0.9 µs per postMessage, ~27 ns via a ring buffer · cache pollution · a heap and GC per thread · Atomics and OS scheduling</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>CPU caches: the real bottleneck</h2>
+    <div class="cols">
+      <div class="card good"><span class="card-title">One thread</span>Data stays in L1/L2 (~1–4 ns), hot and fast.</div>
+      <div class="card bad"><span class="card-title">Many threads</span>They evict each other's lines from shared L3 (~10–40 ns), shared data causes false sharing, and more threads ≠ more throughput.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>When to use what</h2>
+    <div class="cols-3">
+      <div class="card good"><span class="card-title">Stay single-threaded</span>CPU work under 1 ms, hot data in cache, per-request latency matters most.</div>
+      <div class="card warn"><span class="card-title">Concurrency (async)</span>Waiting on network, disk or DNS; many connections.</div>
+      <div class="card info"><span class="card-title">Parallelism (Workers)</span>CPU work over ~40 ms, independent state, and a gain that outweighs communication.</div>
+    </div>
+    <p class="callout">Default to single-threaded. Add async for I/O. Reach for Workers when the CPU work is big enough to pay for them, and measure to prove it.</p>
+  </section>
+</section>

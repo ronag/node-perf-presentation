@@ -1,0 +1,96 @@
+<!-- HTTP HOT PATH -->
+<section id="http" data-chapter="HTTP" data-chapter-num="10">
+  <section class="section-header">
+    <h2>The HTTP Hot Path</h2>
+    <p>Response building, headers and object shapes</p>
+  </section>
+
+  <section data-core>
+    <h2><code>res.write()</code> is not a string builder</h2>
+    <div class="cols">
+      <div>
+        <div class="col-label bad">Before: one write per fragment</div>
+        <pre class="dense"><code class="language-javascript">for (const r of rows) {
+  res.write('{"id":"')
+  res.write(r.id)
+  res.write('","rev":"')
+  res.write(r.rev)
+  res.write('"}\n')
+}
+// 36,866 writes per response,
+// each one a chunk with framing</code></pre>
+      </div>
+      <div>
+        <div class="col-label good">After: build into a slab, write big chunks</div>
+        <pre class="dense"><code class="language-javascript">const ID = Buffer.from('{"id":"')   // precomputed
+let slab = Buffer.allocUnsafeSlow(256 * 1024), n = 0
+
+function put (b) {
+  if (n + b.length > slab.length) flush()
+  n += b.copy(slab, n)
+}
+function flush () {
+  if (n) res.write(slab.subarray(0, n))
+  slab = Buffer.allocUnsafeSlow(slab.length); n = 0
+}   // never reuse a slab: the socket still owns it</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>Build responses into your own buffer</h2>
+    <div class="chart" data-unit="k/s" data-title="streaming JSON feed, 4,096 rows per response">
+      <div class="bad" data-value="75.5" data-display="75.5k rows/s">one res.write() per fragment</div>
+      <div class="good" data-value="349.4" data-display="349k rows/s" data-note="4.6×">256 KiB slabs</div>
+    </div>
+    <div class="stats">
+      <div class="stat good"><span class="stat-value">−65%</span><span class="stat-label">CPU per row</span></div>
+      <div class="stat good"><span class="stat-value">262 → 57 ms</span><span class="stat-label">p99 latency</span></div>
+      <div class="stat good"><span class="stat-value">61,442 → 75</span><span class="stat-label">writes per response</span></div>
+    </div>
+    <p class="muted">Respect backpressure (<code>write()</code> returning false), flush before waiting on live feeds, and only paste bytes that are already valid JSON.</p>
+    <p class="source">Production service, 1 KiB documents, 8 CPUs, Node 26</p>
+  </section>
+
+  <section>
+    <h2><code>cork()</code> doesn't coalesce</h2>
+    <pre class="big"><code class="language-javascript">res.cork()
+for (const piece of pieces) res.write(piece)
+res.uncork()   // still emits every piece as its own chunk</code></pre>
+    <div class="stats">
+      <div class="stat bad"><span class="stat-value">−81 to −91%</span><span class="stat-label">vs building a slab, and slower than no cork at all</span></div>
+    </div>
+    <p class="muted">Corking only delays the syscall. Framing and per-write bookkeeping are paid for every piece.</p>
+  </section>
+
+  <section data-core>
+    <h2>Bring your own <code>ServerResponse</code></h2>
+    <pre><code class="language-javascript">class Response extends http.ServerResponse {
+  setHeader (key, val) { this.#h[key] = val; return this } // trusted names
+  getHeaders () { return this.#h }                          // no copy
+}
+http.createServer({ IncomingMessage: Request, ServerResponse: Response }, handler)</code></pre>
+    <div class="chart" data-unit="ns" data-title="setHeader + getHeader + removeHeader">
+      <div class="bad" data-value="84">node:http</div>
+      <div class="good" data-value="40" data-note="2.1×">subclass with a plain header object</div>
+    </div>
+    <div class="stats">
+      <div class="stat good"><span class="stat-value">0.3 ns</span><span class="stat-label"><code>getHeaders()</code> vs 30–330 ns for core's defensive copy</span></div>
+      <div class="stat good"><span class="stat-value">70k → 95k</span><span class="stat-label">req/s, together with the hot-path fixes that followed</span></div>
+    </div>
+    <p class="source">Validate header names in development only; Node still validates when it serializes. Production service measurement.</p>
+  </section>
+
+  <section data-core>
+    <h2>Object shapes on the hot path</h2>
+    <table class="data">
+      <thead><tr><th>Trap</th><th>Fix</th><th class="num">Win</th></tr></thead>
+      <tbody>
+        <tr class="fragment fade-up"><td><code>logger.child()</code> per request<br><span class="small">a new prototype per request → megamorphic property lookups</span></td><td>bind once, pass ids</td><td class="num win">~49k → ~84k req/s</td></tr>
+        <tr class="fragment fade-up"><td><code>Object.create(null)</code> as a map<br><span class="small">always dictionary mode; JSON.stringify takes the slow path</span></td><td>plain <code>{}</code></td><td class="num win">730 → 263 ns stringify<br>+5.5% req/s</td></tr>
+        <tr class="fragment fade-up"><td><code>{ ...timing, value }</code> per result<br><span class="small">an extra allocation plus out-of-object properties</span></td><td>one complete literal, fixed key order</td><td class="num win">91 → 70 ns (−23%)</td></tr>
+      </tbody>
+    </table>
+    <p class="source">Production service measurements, Node 26</p>
+  </section>
+</section>

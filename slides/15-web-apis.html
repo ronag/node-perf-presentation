@@ -1,0 +1,77 @@
+<!-- WEB APIs: THE COMPATIBILITY TAX -->
+<section id="web-apis" data-chapter="Web APIs" data-chapter-num="14">
+  <section class="section-header">
+    <h2>Web APIs: The Compatibility Tax</h2>
+    <p>Spec compliance has a cost. Know your alternatives.</p>
+  </section>
+
+  <section data-core>
+    <h2>URL parsing</h2>
+    <div class="chart" data-unit="ns" data-title="parse a 60-char request target, a fresh string per request, base from the Host header">
+      <div class="bad" data-value="375">new URL(target, `http://${host}`)</div>
+      <div data-value="324">URL.parse(target, base)</div>
+      <div data-value="291">url.parse(target) · legacy, deprecated</div>
+      <div class="good" data-value="257" data-note="1.5×">request-target · RFC 7230, HTTP only</div>
+      <div class="good" data-value="28.5" data-note="13×">indexOf('?') + slice</div>
+    </div>
+    <p class="muted"><code>new URL()</code> handles IDNA, schemes and normalization a request line never needs. At 20 chars request-target and <code>new URL()</code> are even; at 200 chars it's 1.1×.</p>
+    <p class="source">benchmarks/url.mjs · EPYC 9355P · Node 26.10. With one constant string, V8 reuses work and regex parsers look up to 2× faster than a server sees them.</p>
+  </section>
+
+  <section>
+    <h2>Validate in one pass, in WebAssembly</h2>
+    <p class="lead">Scan the common origin-form <code>/path?query</code> in WASM; hand anything unusual to request-target unchanged.</p>
+    <div class="chart" data-unit="ns" data-title="validate + split a request target (fresh strings)">
+      <div class="bad" data-value="216">URL.parse(url, 'http://' + host) · 20 chars</div>
+      <div data-value="150">request-target · 20 chars</div>
+      <div class="good" data-value="71" data-note="2.1×">WASM validator · 20 chars</div>
+      <div class="bad" data-value="299">URL.parse(url, 'http://' + host) · 202 chars</div>
+      <div data-value="351">request-target · 202 chars</div>
+      <div class="good" data-value="113" data-note="3.1×">WASM validator · 202 chars</div>
+    </div>
+    <p class="callout bad"><code>URL.parse(url, 'http://' + host)</code> also accepts <code>//evil.example/x</code> as a <em>different host</em>.</p>
+    <p class="source">request-target as the oracle: differential fuzzing, 5M inputs per suite · EPYC 9355P · Node 26.9 · one pinned core · string creation (~77 ns) subtracted, so lower than the previous slide</p>
+  </section>
+
+  <section>
+    <h2>WASM + JS string builtins</h2>
+    <div class="cols">
+      <div class="card good"><span class="card-title">&lt; 32 chars: <code>wasm:js-string</code></span>A scalar loop reads the JS string directly through the JS string builtins. No copy into linear memory.</div>
+      <div class="card good"><span class="card-title">≥ 32 chars: SIMD</span>Copy into linear memory as UTF-8, then classify 16 bytes at a time with nibble lookup tables and find <code>?</code>, <code>//</code> and <code>%</code> with bitmasks.</div>
+    </div>
+    <table class="data" style="margin-top:14px">
+      <thead><tr><th>scan only, incl. string creation</th><th class="num">8 ch</th><th class="num">32 ch</th><th class="num">202 ch</th><th class="num">2,048 ch</th></tr></thead>
+      <tbody>
+        <tr><td>scalar over the JS string</td><td class="num win">43 ns</td><td class="num">62 ns</td><td class="num">252 ns</td><td class="num">1,280 ns</td></tr>
+        <tr><td>copy + SIMD</td><td class="num">57 ns</td><td class="num win">61 ns</td><td class="num win">97 ns</td><td class="num win">358 ns</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Copy as UTF-8, not latin1: latin1 keeps only the low byte, so U+012F would turn into <code>/</code>. Without WebAssembly or SIMD, fall back to the regex parser.</p>
+  </section>
+
+  <section>
+    <h2>HTTP client: <code>fetch</code> vs <code>undici</code></h2>
+    <div class="chart" data-unit="req/s" data-title="50 connections, pipelining depth 10">
+      <div class="bad" data-value="5438">fetch</div>
+      <div class="good" data-value="16851" data-note="3.1×">undici.request</div>
+      <div class="good" data-value="20786" data-note="3.8×">undici.dispatch</div>
+    </div>
+    <p class="muted"><code>fetch</code> is undici plus the Fetch spec layer: <code>Request</code>/<code>Response</code> objects, <code>Headers</code>, and bodies as web streams.</p>
+    <p class="source">undici README benchmarks, Node 24.14.1</p>
+  </section>
+
+  <section>
+    <h2>Web streams vs Node streams</h2>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="create one stream (per-request cost)">
+      <div class="bad" data-value="6.07" data-display="6.07 µs · 2.1 KB">new ReadableStream</div>
+      <div class="good" data-value="0.0196" data-display="19.6 ns · 377 B" data-note="310×">new Readable</div>
+    </div>
+    <div class="chart" data-unit="µs" data-title="500 × 64 KB">
+      <div class="bad" data-value="34.7">Web: consume</div>
+      <div class="good" data-value="17.2" data-note="2.0×">Node: consume</div>
+      <div class="bad" data-value="61.9">Web: write</div>
+      <div class="good" data-value="13.3" data-note="4.6×">Node: write</div>
+    </div>
+    <p class="source">benchmarks/streams.mjs · EPYC 9355P · Node 26.10. <code>await writer.write()</code> costs a microtask per chunk.</p>
+  </section>
+</section>

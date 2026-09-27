@@ -1,0 +1,77 @@
+<!-- INTRUSIVE TWO-RANDOM-CHOICES CACHE -->
+<section id="fast-cache" data-chapter="Caching" data-chapter-num="16">
+  <section class="section-header">
+    <h2>A Cache Without a Linked List</h2>
+    <p>Map for lookups + an intrusive array + two random choices for eviction</p>
+  </section>
+
+  <section>
+    <h2>The problems with LRU</h2>
+    <p class="lead">Typical LRU: a <code>Map</code> for lookup plus a doubly linked list for recency.</p>
+    <div class="cols-3">
+      <div class="card bad"><span class="card-title">Overhead per entry</span>A <code>{ key, value, prev, next }</code> node for every entry: allocation, GC, pointer chasing.</div>
+      <div class="card bad"><span class="card-title">Work per hit</span>Every read unlinks and relinks a node at the head.</div>
+      <div class="card bad"><span class="card-title">Scans</span>Iterating a data set larger than the cache flushes all of it: hit rate drops to 0%.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Power of two random choices</h2>
+    <p class="lead">Keep no order at all. To evict, sample two random entries and drop the less recently used one.</p>
+    <div class="cols">
+      <div class="card good"><span class="card-title">Near-LRU hit rate</span>Matches or beats LRU for larger caches (<a href="https://danluu.com/2choices-eviction/">danluu.com/2choices-eviction</a>).</div>
+      <div class="card good"><span class="card-title">Degrades gracefully</span>Random victims leave some hot entries behind under scans, where LRU drops to 0%.</div>
+      <div class="card good"><span class="card-title">O(1), no nodes</span>A tick counter per item, swap-remove from a dense array.</div>
+      <div class="card good"><span class="card-title">Intrusive</span>The item carries its index, tick and key. Nothing extra to allocate.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Implementation: structure and <code>get()</code></h2>
+    <pre class="big"><code class="language-javascript">class Item { [kIdx] = -1; [kTick] = 0; [kKey] = undefined }
+
+class FastCache {
+  #map = new Map()   // key → item
+  #arr = []          // items, unordered (swap-remove)
+  #tick = 0
+  get (key) {
+    const item = this.#map.get(key)
+    if (item !== undefined) item[kTick] = ++this.#tick
+    return item
+  }
+}</code></pre>
+  </section>
+
+  <section>
+    <h2>Implementation: <code>set()</code></h2>
+    <pre><code class="language-javascript">set (key, item) {
+  const prev = this.#map.get(key)
+  if (prev === item) { item[kTick] = ++this.#tick; return }
+  if (prev !== undefined) this.delete(prev)
+  if (this.#arr.length >= this.#capacity) {
+    const i = (Math.random() * this.#arr.length) | 0
+    const j = (Math.random() * this.#arr.length) | 0
+    const a = this.#arr[i], b = this.#arr[j]
+    this.delete(a[kTick] <= b[kTick] ? a : b)   // swap-remove
+  }
+  item[kKey] = key; item[kTick] = ++this.#tick; item[kIdx] = this.#arr.length
+  this.#arr.push(item); this.#map.set(key, item)
+}</code></pre>
+  </section>
+
+  <section>
+    <h2>Two random choices vs lru-cache</h2>
+    <div class="chart" data-unit="ns">
+      <div class="bad" data-value="19.9">lru-cache: update an existing key</div>
+      <div class="good" data-value="5.39" data-note="3.7×">two-choice: update an existing key</div>
+      <div class="bad" data-value="13.9">lru-cache: get (hit)</div>
+      <div class="good" data-value="11.6" data-note="1.2×">two-choice: get (hit)</div>
+      <div class="bad" data-value="23.6">lru-cache: 80% get / 20% set</div>
+      <div class="good" data-value="16.5" data-note="1.4×">two-choice: 80% get / 20% set</div>
+      <div class="good" data-value="58.6">lru-cache: set that evicts</div>
+      <div class="bad" data-value="82.1">two-choice: set that evicts</div>
+    </div>
+    <p class="muted">Wins on hits and updates, with zero allocation per operation. lru-cache is faster when <em>every</em> set evicts.</p>
+    <p class="source">benchmarks/cache.mjs · 1,024 entries · EPYC 9355P · Node 26.10</p>
+  </section>
+</section>

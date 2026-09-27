@@ -1,0 +1,83 @@
+<!-- FAST TIME & TIMERS -->
+<section id="fast-timers" data-chapter="Time &amp; timers" data-chapter-num="15">
+  <section class="section-header">
+    <h2>Fast Time &amp; Timers</h2>
+    <p><span class="npm-badge">@nxtedition/timers</span></p>
+  </section>
+
+  <section>
+    <h2>Cached timestamps</h2>
+    <pre><code class="language-javascript">let fastNow = Date.now()
+let fastISO = new Date().toISOString()
+setInterval(() => {
+  fastNow = Date.now()
+  fastISO = new Date().toISOString()
+}, 1e3).unref()
+// 1 s resolution is fine for logs, HTTP Date headers, coarse timeouts</code></pre>
+    <div class="chart" data-unit="ns">
+      <div class="bad" data-value="354.6">new Date().toISOString()</div>
+      <div class="bad" data-value="52.2">Date.now()</div>
+      <div class="good" data-value="0.55" data-note="95–900×">cached variable</div>
+    </div>
+    <p class="source">benchmarks/fast-time.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section>
+    <h2>What a native <code>setTimeout</code> costs</h2>
+    <p class="lead">No libuv handle per timer: one libuv timer per thread. But every call still:</p>
+    <div class="cols-4">
+      <div class="card warn"><span class="card-title">Allocates a Timeout</span>~13 fields, plus an args array if you pass arguments</div>
+      <div class="card warn"><span class="card-title">Tracks async context</span>Async id, trigger id and context frame per timer</div>
+      <div class="card warn"><span class="card-title">Reads the clock</span><code>getLibuvNow()</code> on insert</div>
+      <div class="card warn"><span class="card-title">Maintains lists</span>A linked list per duration plus a priority queue</div>
+    </div>
+    <div class="stats" style="margin-top:18px">
+      <div class="stat bad"><span class="stat-value">10,000</span><span class="stat-label">connections × 1 idle timeout = 10,000 long-lived objects, promoted and traced on every major GC</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pooled timers</h2>
+    <pre class="big"><code class="language-javascript">import { setTimeout, clearTimeout } from '@nxtedition/timers'
+
+// ≥ 1 s: one shared 500 ms tick scans a flat array
+const handle = setTimeout(onIdle, 30_000, conn)  // no closure
+
+// < 1 s: falls through to the native setTimeout
+const fast = setTimeout(onTick, 50)
+
+clearTimeout(handle)
+clearTimeout(fast)</code></pre>
+    <p class="muted">Trade-offs: up to one tick late, and callbacks don't carry <code>AsyncLocalStorage</code> context.</p>
+  </section>
+
+  <section>
+    <h2>How it works internally <span class="muted" style="font-size:.5em">(simplified)</span></h2>
+    <pre><code class="language-javascript">function dispatch () {                      // runs every 500 ms
+  const now = Math.round(performance.now() - origin)   // stays a Smi
+  while (index < timers.length) {
+    const t = timers[index]
+    if (t.deadline <= now) {
+      swapRemove(timers, index)             // O(1)
+      t.callback(t.opaque)                  // opaque, not a closure
+    } else index++
+    if ((++n & 0xff) === 0 && shouldYield()) return doYield(dispatch)   // every 256 timers
+  }
+  index = 0
+}</code></pre>
+  </section>
+
+  <section data-core>
+    <h2>Native vs pooled <code>setTimeout</code></h2>
+    <div class="chart" data-unit="ns" data-title="schedule + cancel one 5 s timer">
+      <div class="bad" data-value="934" data-display="934 ns · 358 B">native</div>
+      <div class="good" data-value="55.1" data-display="55 ns · 93 B" data-note="17×">pooled</div>
+    </div>
+    <div class="chart" data-unit="B" data-title="retained heap per live timer (100K timers)">
+      <div class="bad" data-value="128.3">native</div>
+      <div class="good" data-value="73.0" data-note="−43%">pooled</div>
+    </div>
+    <p class="muted">A burst of 100 timers is equal in time (5.46 vs 5.40 µs) but allocates 9× less. The steady-state win is memory.</p>
+    <p class="source">benchmarks/timers.mjs · EPYC 9355P · Node 26.10 · @nxtedition/timers 1.1</p>
+  </section>
+</section>

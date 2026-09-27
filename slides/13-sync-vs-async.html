@@ -1,0 +1,69 @@
+<!-- SYNC VS ASYNC METHODS & V8 FAST API -->
+<section id="sync-vs-async" data-chapter="Sync methods &amp; the native boundary" data-chapter-num="12">
+  <section class="section-header">
+    <h2>V8 Fast API &amp; Sync Methods</h2>
+    <p>Crossing into C++, and when not to leave the thread</p>
+  </section>
+
+  <section>
+    <h2>V8 Fast API calls</h2>
+    <div class="cols">
+      <div class="card bad"><span class="card-title">Normal native call</span>JS → V8 → C++ → V8 → JS: argument conversion, handle scopes, a trip through the runtime.</div>
+      <div class="card good"><span class="card-title">Fast API call</span>JS → C++, called directly from TurboFan-compiled code when the argument types are known.</div>
+    </div>
+    <div class="cols" style="margin-top:14px">
+      <div class="card good"><span class="card-title">Fast in Node 26</span>
+        <code>buf.copy</code>, <code>compare</code>, <code>swap16/32/64</code>, <code>Buffer.byteLength</code>, <code>isUtf8</code>, <code>isAscii</code>,
+        <code>performance.now</code>, <code>hrtime</code>, <code>URL.canParse</code>, <code>timingSafeEqual</code>, <code>zlib.crc32</code></div>
+      <div class="card warn"><span class="card-title">Not Fast API</span>
+        <code>fs.*Sync</code>, <code>buf.fill</code>, <code>TextEncoder.encodeInto</code>. Sync fs is fast because it skips the thread pool, not because of the call.</div>
+    </div>
+    <p class="muted">And native isn't free: <code>Buffer.compare</code> on a 5-byte slice took 84 ns, a JS byte loop 2.85 ns.</p>
+  </section>
+
+  <section data-core>
+    <h2>Sync vs async: 12× on Linux, 190× on macOS</h2>
+    <div class="cols">
+      <div class="card info"><span class="card-title">fs.read(fd, buf, 0, len, 0, cb)</span>Thread pool hop + syscall + callback + async context</div>
+      <div class="card good"><span class="card-title">fs.readSync(fd, buf, 0, len, 0)</span>Syscall on the calling thread</div>
+    </div>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="read 4 KB from the page cache, one at a time">
+      <div class="good" data-value="0.377">fs.readSync · EPYC / Linux</div>
+      <div class="bad" data-value="4.65" data-note="12×">fs.read · EPYC / Linux</div>
+      <div class="good" data-value="0.603">fs.readSync · M3 / macOS</div>
+      <div class="bad" data-value="115" data-note="190×">fs.read · M3 / macOS</div>
+    </div>
+    <p class="source">benchmarks/fs-sync-vs-async.mjs · Node 26.10 (Linux) / 25.3 (macOS) · 4 MB reads: 85 vs 231 µs on Linux (2.7×)</p>
+    <aside class="notes">The async price is a thread-pool round trip, and the OS sets it: thread wake-ups are much slower on macOS.</aside>
+  </section>
+
+  <section>
+    <h2>When is sync OK?</h2>
+    <div class="cols-4">
+      <div class="card good"><span class="card-title">Worker threads</span>No main event loop to block</div>
+      <div class="card good"><span class="card-title">Startup</span>No requests to block yet</div>
+      <div class="card good"><span class="card-title">Page cache / SSD</span>Microseconds, not milliseconds</div>
+      <div class="card good"><span class="card-title">With yielding</span>Stay responsive (see later)</div>
+    </div>
+    <p class="callout">Sync is the fastest path for useful work. It hurts only when you <em>wait</em> on something slow. Many “I/O” calls hit OS caches and return immediately.</p>
+  </section>
+
+  <section>
+    <h2>Sync in Workers: hashing files</h2>
+    <pre><code class="language-javascript">// worker.js: plain sync code, off the main thread
+export default function ({ filePath }) {
+  const fd = fs.openSync(filePath, 'r')
+  try {
+    const hash = crypto.createHash('md5')
+    const buf = Buffer.allocUnsafeSlow(128 * 1024)
+    let n
+    while ((n = fs.readSync(fd, buf)) > 0) hash.update(buf.subarray(0, n))
+    return hash.digest('hex')
+  } finally { fs.closeSync(fd) }
+}
+// main.js
+const pool = new Piscina({ filename: new URL('./worker.js', import.meta.url).href })
+const hash = await pool.run({ filePath })</code></pre>
+    <p class="source">benchmarks/file-hash-worker.mjs: 128 MB, sync 140 ms vs async 150 ms, and no Promise per chunk</p>
+  </section>
+</section>

@@ -1,0 +1,62 @@
+<!-- UV THREAD POOL CONFIGURATION -->
+<section id="uv-threadpool" data-chapter="The libuv thread pool" data-chapter-num="21">
+  <section class="section-header">
+    <h2>UV Thread Pool Configuration</h2>
+    <p>The hidden bottleneck</p>
+  </section>
+
+  <section>
+    <h2>What uses the thread pool?</h2>
+    <pre class="big"><code class="language-javascript">// all of these share the SAME pool, 4 threads by default
+fs.readFile(path, cb)             // async file I/O
+crypto.pbkdf2(pass, salt, …, cb)  // crypto
+zlib.deflate(buf, cb)             // compression
+dns.lookup(host, cb)              // DNS: also every http.get('host…')</code></pre>
+    <p class="callout bad">Four slow disk reads and your outgoing HTTP requests stall on DNS. (<code>dns.lookup</code> is capped at half the pool.)</p>
+  </section>
+
+  <section data-core>
+    <h2>Configuring the pool</h2>
+    <pre><code class="language-bash">UV_THREADPOOL_SIZE=16 node server.js   # read once, at the first pool task</code></pre>
+    <div class="chart" data-unit="ops/s" data-title="100 operations in flight, 16 pinned cores">
+      <div class="bad" data-value="1533">pbkdf2 · 4 threads</div>
+      <div class="good" data-value="4627" data-note="3.0×">pbkdf2 · 16 threads</div>
+      <div class="bad" data-value="3078">mixed fs + crypto · 4 threads</div>
+      <div class="good" data-value="10837" data-note="3.5×">mixed fs + crypto · 16 threads</div>
+    </div>
+    <p class="muted">Page-cache fs reads: 348K vs 359K ops/s, no change. More threads help blocking work, not fast work.</p>
+    <p class="source">benchmarks/uv-threadpool.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section>
+    <h2>Gotchas</h2>
+    <div class="cols-3">
+      <div class="card bad"><span class="card-title">Must be set early</span>Read once when the pool starts. <code>process.env</code> works only before the first pool task.</div>
+      <div class="card bad"><span class="card-title">More ≠ better</span>More memory and context switches. Pure page-cache fs can get slower. Maximum 1024.</div>
+      <div class="card bad"><span class="card-title">Shared across Workers</span>One pool per process: 4 Workers × default pool = ~1 thread each.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why not auto-size it?</h2>
+    <p class="lead">nodejs/node#61533 sized the pool to the available parallelism. On a 16 vCPU host:</p>
+    <div class="cols-3">
+      <div class="stat good"><span class="stat-value">+281%</span><span class="stat-label">crypto-heavy route</span></div>
+      <div class="stat good"><span class="stat-value">+89%</span><span class="stat-label">mixed fs + crypto</span></div>
+      <div class="stat bad"><span class="stat-value">−15%</span><span class="stat-label">pure fs</span></div>
+    </div>
+    <p class="callout">Closed unmerged: “Just because there are many CPUs in a host, it doesn't mean they are free. Saturating the CPU is worse than queuing I/O tasks.” Size it for <em>your</em> workload.</p>
+    <p class="source">Benchmarks by @RafaelGSS, AMD EPYC-Rome 16 vCPU, autocannon, 100 connections</p>
+  </section>
+
+  <section>
+    <h2>Coordinating with a scheduler</h2>
+    <pre><code class="language-javascript">import { Scheduler } from '@nxtedition/scheduler'
+
+const poolSize = Number(process.env.UV_THREADPOOL_SIZE ?? 4)
+const io = new Scheduler(Scheduler.makeSharedState(poolSize)) // share it
+
+const handleRequest = () => io.run(() => fs.promises.readFile(path), 'high')
+const backgroundIndex = () => io.run(() => fs.promises.readFile(path), 'low')</code></pre>
+  </section>
+</section>

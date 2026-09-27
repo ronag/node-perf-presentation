@@ -199,51 +199,37 @@ summary(() => {
   })
 })
 
-summary(() => {
-  group('eviction pressure (set beyond capacity)', () => {
-    bench('LRUCache eviction', () => {
-      const c = new LRUCache({ max: 128 })
-      for (let i = 0; i < 256; i++) {
-        c.set(keys[i & (CAPACITY - 1)], items[i & (CAPACITY - 1)])
-      }
-      do_not_optimize(c.size)
-    }).gc('inner')
-
-    bench('FastCache eviction (intrusive)', () => {
-      const c = new FastCache(128)
-      for (let i = 0; i < 256; i++) {
-        c.set(keys[i & (CAPACITY - 1)], items[i & (CAPACITY - 1)])
-      }
-      do_not_optimize(c.size)
-    }).gc('inner')
-  })
-})
+// Steady-state eviction: a full cache and a key space 4× its capacity, so
+// (almost) every set evicts. Items are recycled: an evicted item has
+// kCacheIdx === -1 again and can be re-inserted.
+const EVICT_KEYS = CAPACITY * 4
+const evictKeys = new Array(EVICT_KEYS)
+const evictItems = new Array(EVICT_KEYS)
+for (let i = 0; i < EVICT_KEYS; i++) {
+  evictKeys[i] = `evict-${i}`
+  evictItems[i] = new CacheableItem(i)
+}
+const lruFull = new LRUCache({ max: CAPACITY })
+const fastFull = new FastCache(CAPACITY)
+for (let i = 0; i < EVICT_KEYS; i++) {
+  lruFull.set(evictKeys[i], evictItems[i])
+  fastFull.set(evictKeys[i], evictItems[i])
+}
 
 summary(() => {
-  group('batch 1000 set + get', () => {
-    bench('LRUCache batch', () => {
-      const c = new LRUCache({ max: CAPACITY })
-      for (let i = 0; i < 1000; i++) {
-        c.set(keys[i & (CAPACITY - 1)], i)
-      }
-      let sum = 0
-      for (let i = 0; i < 1000; i++) {
-        sum += c.get(keys[i & (CAPACITY - 1)])
-      }
-      do_not_optimize(sum)
+  group('set with eviction (full cache, 4× key space)', () => {
+    let i = 0
+    bench('LRUCache.set + evict', () => {
+      const idx = i++ & (EVICT_KEYS - 1)
+      lruFull.set(evictKeys[idx], evictItems[idx])
+      do_not_optimize(lruFull.size)
     }).gc('inner')
 
-    bench('FastCache batch (intrusive)', () => {
-      const c = new FastCache(CAPACITY)
-      for (let i = 0; i < 1000; i++) {
-        c.set(keys[i & (CAPACITY - 1)], items[i & (CAPACITY - 1)])
-      }
-      let sum = 0
-      for (let i = 0; i < 1000; i++) {
-        const v = c.get(keys[i & (CAPACITY - 1)])
-        sum += v ? v.data : 0
-      }
-      do_not_optimize(sum)
+    let j = 0
+    bench('FastCache.set + evict (intrusive)', () => {
+      const idx = j++ & (EVICT_KEYS - 1)
+      fastFull.set(evictKeys[idx], evictItems[idx])
+      do_not_optimize(fastFull.size)
     }).gc('inner')
   })
 })

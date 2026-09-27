@@ -1,0 +1,47 @@
+clk: ~4.32 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• Map with 1,000 entries: delete + set
+------------------------------------------- -------------------------------
+same key every time          971.41 ns/iter 980.07 ns   ▆  ▄  ▄▃▄▆█ ▃▃▃    
+                      (948.93 ns … 1.06 µs) 997.56 ns ▂▄█▇██▇██████▇███    
+                    ( 42.19  b …  64.76  b)  54.98  b █████████████████▅▃▆▅
+
+rotating keys                 24.69 ns/iter  22.03 ns    █                 
+                       (19.09 ns … 1.20 µs)  39.74 ns    █                 
+                    ( 42.12  b …  67.33  b)  54.80  b ▂▄██▁▁▁▁▁▂▃▂▁▁▁▁▁▁▁▁▁
+
+summary
+  rotating keys
+   39.34x faster than same key every time
+
+• Map with 10,000 entries: delete + set
+------------------------------------------- -------------------------------
+same key every time           17.57 µs/iter  24.93 µs   █                  
+                       (3.75 µs … 36.41 µs)  32.30 µs ▅ █▅ ▅ ▅  ▅  ▅ ▅  ▅ ▅
+                    (  0.12  b … 224.13  b)  37.56  b █▁██▁█▁█▁▁█▁▁█▁█▁▁█▁█
+
+rotating keys                 36.07 ns/iter  27.43 ns  █                   
+                       (22.84 ns … 1.57 µs)  80.87 ns ▂█                   
+                    (  0.09  b … 224.13  b)  40.22  b ██▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▆▃▁
+
+summary
+  rotating keys
+   487.24x faster than same key every time
+
+• Map with 100,000 entries: delete + set
+------------------------------------------- -------------------------------
+same key every time           23.69 µs/iter  32.53 µs                 █    
+                       (3.72 µs … 47.87 µs)  40.51 µs ▅ ▅ ▅ ▅ ▅ ▅ ▅ ▅ █   ▅
+                    (  0.12  b …   1.75 kb) 149.45  b █▁█▁█▁█▁█▁█▁█▁█▁█▁▁▁█
+
+rotating keys                 49.46 ns/iter  40.20 ns █                    
+                       (29.47 ns … 1.54 µs) 478.51 ns █                    
+                    (  0.09  b …   1.75 kb)  43.89  b █▇▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  rotating keys
+   479.02x faster than same key every time

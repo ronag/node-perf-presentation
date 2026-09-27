@@ -1,0 +1,76 @@
+<!-- SQLITE -->
+<section id="sqlite" data-chapter="SQLite" data-chapter-num="13">
+  <section class="section-header">
+    <h2>SQLite</h2>
+    <p><code>node:sqlite</code> is synchronous, and that's the point</p>
+  </section>
+
+  <section data-core>
+    <h2><code>DatabaseSync</code>: prepare once, call synchronously</h2>
+    <pre><code class="language-javascript">import { DatabaseSync } from 'node:sqlite'
+
+const db = new DatabaseSync('cache.db', { timeout: 10 })
+const byId = db.prepare('SELECT * FROM users WHERE id = ?')   // once
+byId.get(42)                                                   // no Promise, no thread pool</code></pre>
+    <div class="chart" data-unit="µs" data-title="SELECT one row by primary key">
+      <div class="bad" data-value="4.36">db.prepare(sql) on every call</div>
+      <div class="good" data-value="1.33" data-note="3.3×">reused statement</div>
+      <div class="good" data-value="1.49" data-note="2.9×">db.createTagStore(): an LRU of statements</div>
+      <div class="good" data-value="1.18" data-note="3.7×">reused + setReturnArrays(true)</div>
+    </div>
+    <p class="source">benchmarks/sqlite-pragmas.mjs · SQLite 3.53 · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section data-core>
+    <h2>Choose your durability deliberately</h2>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="INSERT one 256 B row">
+      <div class="bad" data-value="215.7">default: rollback journal, synchronous=FULL</div>
+      <div data-value="25.9" data-note="8×">journal_mode=WAL, synchronous=FULL</div>
+      <div class="good" data-value="11.5" data-note="19×">journal_mode=WAL, synchronous=NORMAL</div>
+      <div class="good" data-value="3.88" data-note="56×">journal_mode=WAL, synchronous=OFF</div>
+      <div class="good" data-value="1.36" data-note="159×">WAL + NORMAL, 1,000 rows per transaction</div>
+    </div>
+    <p class="muted"><strong>NORMAL</strong> in WAL mode never corrupts; a power cut may lose the last commits. <strong>OFF</strong> is for data you can rebuild: caches, scratch tables.</p>
+    <p class="source">benchmarks/sqlite-pragmas.mjs · NVMe (ext4) · log scale</p>
+  </section>
+
+  <section>
+    <h2>A pragma recipe for a cache</h2>
+    <pre class="big"><code class="language-sql">PRAGMA journal_mode = WAL;          -- readers never block the writer
+PRAGMA synchronous = OFF;           -- rebuildable data: no fsync
+PRAGMA wal_autocheckpoint = 10000;  -- checkpoint less often
+PRAGMA mmap_size = 268435456;       -- read through the page cache
+PRAGMA cache_size = -32768;         -- KiB of SQLite page cache
+PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict</code></pre>
+    <div class="cols">
+      <div class="card warn"><span class="card-title"><code>BEGIN IMMEDIATE</code></span>Take the write lock up front. A deferred transaction that upgrades later can deadlock with another writer.</div>
+      <div class="card bad"><span class="card-title">Read the pragma back</span><code>journal_mode = OFF</code> is silently refused unless you open with <code>{ defensive: false }</code>.</div>
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>One writer per file: shard it</h2>
+    <pre><code class="language-javascript">const db = shards[hash(key) % shards.length]   // own file, own write lock</code></pre>
+    <div class="chart" data-unit="ops/s" data-title="12 Worker threads, cold writes (a single thread: 125K ops/s)">
+      <div class="bad" data-value="148000" data-display="148K">1 file: 1.18× a single thread</div>
+      <div data-value="198000" data-display="198K" data-note="+34%">2 shards</div>
+      <div class="good" data-value="239000" data-display="239K" data-note="+62%">4 shards</div>
+      <div class="good" data-value="256000" data-display="256K" data-note="+73%">8 shards</div>
+    </div>
+    <p class="muted">Plus an advisory lock per shard in a <code>SharedArrayBuffer</code> (<code>Atomics.compareExchange</code>): a Worker that finds a shard busy defers its flush instead of hitting <code>SQLITE_BUSY</code>.</p>
+    <p class="source">benchmarks/sqlite-cache-shards.mjs (<span class="npm-badge">@nxtedition/cache</span>) · EPYC 9355P, 12 pinned cores</p>
+  </section>
+
+  <section>
+    <h2>Keep maintenance off the event loop</h2>
+    <div class="cols">
+      <div class="card bad"><span class="card-title">On the main thread</span><code>DELETE</code> of 20K expired rows plus a checkpoint: a <strong>180 ms</strong> event-loop stall.</div>
+      <div class="card good"><span class="card-title">In a Worker with its own connection</span>Same work, WAL lets both proceed: max tick gap <strong>5.8 ms</strong>.</div>
+    </div>
+    <pre style="margin-top:14px"><code class="language-javascript">for (const row of db.prepare('SELECT * FROM big').iterate()) { // a cursor
+  process(row)
+  const p = maybeYield(); if (p) await p   // and yield (see Yielding)
+}</code></pre>
+    <p class="source">Production measurement</p>
+  </section>
+</section>

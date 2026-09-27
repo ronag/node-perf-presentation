@@ -1,0 +1,62 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+---------------------------------------------- -------------------------------
+• 1000 cache hits (100% sync)
+---------------------------------------------- -------------------------------
+async function (always Promise)  57.61 µs/iter  54.24 µs ▇█                   
+                        (53.07 µs … 617.02 µs)  73.74 µs ██▁▂▁▁▃▃▁▁▁▁▁▁▁▁▁▁▁▁▁
+                     gc(  2.24 ms …   5.15 ms) 259.52 kb (259.06 kb…286.59 kb)
+
+async return pattern              5.63 µs/iter   5.71 µs  ▄ █                 
+                           (5.56 µs … 5.75 µs)   5.74 µs ▄█▆██▃▃▃▁▁▁▁▁▁▁▁▄▇▇▆▃
+                     gc(  2.30 ms …   4.13 ms)   5.39  b (  0.11  b…256.75  b)
+
+async return (reused obj)        22.34 µs/iter  21.93 µs  ▃██                 
+                         (21.07 µs … 99.76 µs)  26.00 µs ▂███▇▂▁▁▁▁▁▁▂▂▂▂▁▁▁▁▁
+                     gc(  2.30 ms …   5.41 ms) 524.61  b (432.00  b… 16.44 kb)
+
+summary
+  async return pattern
+   3.97x faster than async return (reused obj)
+   10.23x faster than async function (always Promise)
+
+• 1000 lookups, 50% hit rate
+---------------------------------------------- -------------------------------
+async function (always Promise)  86.66 µs/iter  83.79 µs ▅█                   
+                        (81.89 µs … 658.99 µs) 110.36 µs ██▄▃▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                     gc(  2.35 ms …   5.30 ms) 408.78 kb (408.66 kb…424.68 kb)
+
+async return pattern             51.03 µs/iter  50.90 µs   █▇▄                
+                         (49.22 µs … 75.73 µs)  55.99 µs ▂▇███▆▃▁▂▂▁▂▁▁▂▃▂▃▂▁▂
+                     gc(  2.36 ms …   4.28 ms) 114.96 kb (114.87 kb…130.88 kb)
+
+async return (reused obj)        51.44 µs/iter  51.09 µs  █                   
+                         (49.39 µs … 74.65 µs)  73.68 µs ▅█▂▂▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                     gc(  2.38 ms …   5.11 ms)  95.56 kb ( 95.53 kb…101.06 kb)
+
+summary
+  async return pattern
+   1.01x faster than async return (reused obj)
+   1.7x faster than async function (always Promise)
+
+• 1000 lookups, 95% hit rate
+---------------------------------------------- -------------------------------
+async function (always Promise)  45.63 µs/iter  45.76 µs  █                   
+                         (45.38 µs … 46.11 µs)  45.90 µs █████▁▁█▁▁▁▁▁▁██▁▁▁██
+                     gc(  4.08 ms …   6.32 ms)   6.66 kb (  6.66 kb…  6.66 kb)
+
+async return pattern              9.85 µs/iter   9.92 µs   █             ▂▂   
+                          (9.76 µs … 10.01 µs)   9.96 µs ▇▄█▁▇▇▄▁▄▁▁▁▄▁▄▄██▁▄▄
+                     gc(  3.62 ms …   5.93 ms)   5.03 kb (  5.03 kb…  5.03 kb)
+
+async return (reused obj)         9.61 µs/iter   9.64 µs ▅  ▂█                
+                           (9.54 µs … 9.74 µs)   9.72 µs █▄▇██▄▄▇▄▁▁▇▁▁▁▄▁▁▁▇▇
+                     gc(  2.44 ms …   4.68 ms)   7.64 kb (  7.64 kb…  7.65 kb)
+
+summary
+  async return (reused obj)
+   1.03x faster than async return pattern
+   4.75x faster than async function (always Promise)

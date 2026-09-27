@@ -1,0 +1,33 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• read 4 KB
+------------------------------------------- -------------------------------
+fs.readSync                  377.28 ns/iter 359.74 ns  █                   
+                    (346.57 ns … 498.33 ns) 491.01 ns ▃█▅▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▃▂
+                  gc(  2.23 ms …   6.58 ms)   9.54  b (  0.16  b…381.76  b)
+
+fs.read (callback)             4.65 µs/iter   4.80 µs  █▃▃                 
+                        (4.41 µs … 5.23 µs)   5.12 µs ▄████▄▆▃▃▆▃█▄▃▃▁▄▃▃▁▄
+                  gc(  2.35 ms …   3.92 ms) 560.54  b (520.28  b…  1.07 kb)
+
+summary
+  fs.readSync
+   12.33x faster than fs.read (callback)
+
+• read 4 MB
+------------------------------------------- -------------------------------
+fs.readSync                   84.59 µs/iter  80.17 µs  █                   
+                     (74.57 µs … 628.44 µs) 178.37 µs ██▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.29 ms …   4.45 ms) 472.90  b (432.00  b…  1.84 kb)
+
+fs.read (callback)           230.62 µs/iter 626.22 µs █                    
+                     (88.63 µs … 644.25 µs) 641.74 µs █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▆
+                  gc(  2.35 ms …   3.84 ms) 981.60  b (952.00  b…  7.43 kb)
+
+summary
+  fs.readSync
+   2.73x faster than fs.read (callback)

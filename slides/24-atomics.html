@@ -1,0 +1,69 @@
+<!-- ATOMICS ARE SLOW -->
+<section id="atomics" data-chapter="Atomics" data-chapter-num="23">
+  <section class="section-header">
+    <h2>Atomics are Slow</h2>
+    <p>Avoid them, batch them, or skip them where the hardware allows</p>
+  </section>
+
+  <section>
+    <h2>The cost of Atomics</h2>
+    <div class="cols">
+      <div class="chart" data-unit="ns" data-title="read an i32">
+        <div class="good" data-value="0.61">plain read</div>
+        <div class="bad" data-value="6.51" data-note="11×">Atomics.load</div>
+      </div>
+      <div class="chart" data-unit="ns" data-title="write an i32">
+        <div class="good" data-value="1.59">plain write</div>
+        <div class="bad" data-value="8.64" data-note="5×">Atomics.store</div>
+      </div>
+    </div>
+    <p class="muted">On x86 an <code>Atomics.load</code> is a plain MOV. The cost is the builtin call and the reordering the JIT is no longer allowed to do. Stores are sequentially consistent: a full barrier.</p>
+    <p class="source">benchmarks/atomics.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section>
+    <h2>Batch, don't spam</h2>
+    <pre><code class="language-javascript">// BAD: publish every message
+for (const msg of batch) { write(ring, msg); Atomics.store(state, WRITE, pos) }
+
+// GOOD: plain writes, publish once
+for (const msg of batch) write(ring, msg)
+Atomics.store(state, WRITE, pos)</code></pre>
+    <div class="chart" data-unit="ns" data-title="100 writes">
+      <div class="bad" data-value="783">Atomics.store × 100</div>
+      <div class="good" data-value="28.8" data-note="27×">plain × 100 + one Atomics.store</div>
+    </div>
+    <p class="muted">That's what the ring buffer does: plain writes into the data region, one <code>Atomics.store</code> to publish the write position.</p>
+  </section>
+
+  <section>
+    <h2>Real world: <code>writer.cork()</code></h2>
+    <pre class="big"><code class="language-javascript">writer.cork(() => {
+  for (const msg of messages) {
+    writer.writeSync(msg.length, write, msg)   // plain memcpy, no barrier
+  }
+})
+// outermost uncork → a single Atomics.store of the write index</code></pre>
+    <p class="muted">Uncorked writes are already batched per microtask; corking just makes the batch boundary explicit.</p>
+  </section>
+
+  <section>
+    <h2>Waking the other side</h2>
+    <div class="cols-3">
+      <div class="card info"><span class="card-title">Atomics.wait / waitAsync</span>Zero CPU while idle, but OS scheduling adds µs of wake-up latency.</div>
+      <div class="card warn"><span class="card-title">Spin with Atomics.pause()</span>Lowest latency, burns a core. Tell the CPU you're spinning.</div>
+      <div class="card good"><span class="card-title">Only notify when someone waits</span><code>Atomics.notify</code> with no waiters still costs 21.8 ns. Keep a “waiting” flag and check it.</div>
+    </div>
+    <pre style="margin-top:14px"><code class="language-javascript">// a load instead of a 21.8 ns notify
+if (Atomics.load(state, READER_WAITING)) Atomics.notify(state, WRITE)</code></pre>
+  </section>
+
+  <section>
+    <h2>Memory ordering: x86 vs ARM64</h2>
+    <div class="cols">
+      <div class="card good"><span class="card-title">x86 (total store order)</span>Stores become visible in program order and 32-bit accesses are atomic. A reader can get away with plain loads.</div>
+      <div class="card bad"><span class="card-title">ARM64 (weakly ordered)</span>Loads can be reordered. The reader needs an <code>Atomics.load</code> (acquire) of the write index before reading the data. That includes Apple Silicon and Graviton.</div>
+    </div>
+    <p class="callout bad">Minimum correct protocol everywhere: plain data writes → <code>Atomics.store</code> of the index; <code>Atomics.load</code> of the index → plain data reads.</p>
+  </section>
+</section>

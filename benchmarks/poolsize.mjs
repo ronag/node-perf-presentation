@@ -1,127 +1,25 @@
-// Benchmark: Buffer.poolSize and stream highWaterMark tuning
+// Benchmark: Buffer.poolSize tuning.
+// Buffer.allocUnsafe(n) is carved from a shared slab when n < Buffer.poolSize / 2;
+// larger requests get their own ArrayBuffer (slow path).
+// Node >= 26.3 defaults to a 64 KiB pool (8 KiB before), so < 32 KiB is pooled.
+//
+// Each pool size runs in its own process so the slab is sized correctly from
+// the first allocation:
+//   node --expose-gc benchmarks/poolsize.mjs            # default pool
+//   BUFFER_POOL_SIZE=1048576 node --expose-gc benchmarks/poolsize.mjs
 import { run, bench, group, summary, do_not_optimize } from 'mitata'
-import { Readable, Writable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
 
-// --- Buffer.poolSize benchmarks ---
+if (process.env.BUFFER_POOL_SIZE) Buffer.poolSize = Number(process.env.BUFFER_POOL_SIZE)
+console.log(`Buffer.poolSize = ${Buffer.poolSize} (pooled below ${Buffer.poolSize >>> 1} B)`)
 
-// Default poolSize = 8192
-// Buffer.allocUnsafe uses the pool for sizes <= poolSize/2 (4096)
-// Sizes > 4096 skip the pool and allocate directly
-
-summary(() => {
-  group('allocUnsafe 1024 bytes (poolSize)', () => {
-    bench('poolSize = 8192 (default)', () => {
-      Buffer.poolSize = 8192
-      do_not_optimize(Buffer.allocUnsafe(1024))
-    }).gc('inner')
-
-    bench('poolSize = 128 * 1024', () => {
-      Buffer.poolSize = 128 * 1024
-      do_not_optimize(Buffer.allocUnsafe(1024))
-    }).gc('inner')
-  })
-})
-
-summary(() => {
-  group('allocUnsafe 8192 bytes (poolSize)', () => {
-    bench('poolSize = 8192 (default)', () => {
-      Buffer.poolSize = 8192
-      do_not_optimize(Buffer.allocUnsafe(8192))
-    }).gc('inner')
-
-    bench('poolSize = 128 * 1024', () => {
-      Buffer.poolSize = 128 * 1024
-      do_not_optimize(Buffer.allocUnsafe(8192))
-    }).gc('inner')
-  })
-})
-
-summary(() => {
-  group('allocUnsafe 16384 bytes (poolSize)', () => {
-    bench('poolSize = 8192 (default)', () => {
-      Buffer.poolSize = 8192
-      do_not_optimize(Buffer.allocUnsafe(16384))
-    }).gc('inner')
-
-    bench('poolSize = 128 * 1024', () => {
-      Buffer.poolSize = 128 * 1024
-      do_not_optimize(Buffer.allocUnsafe(16384))
-    }).gc('inner')
-  })
-})
-
-summary(() => {
-  group('allocUnsafe 65536 bytes (poolSize)', () => {
-    bench('poolSize = 8192 (default)', () => {
-      Buffer.poolSize = 8192
-      do_not_optimize(Buffer.allocUnsafe(65536))
-    }).gc('inner')
-
-    bench('poolSize = 128 * 1024', () => {
-      Buffer.poolSize = 128 * 1024
-      do_not_optimize(Buffer.allocUnsafe(65536))
-    }).gc('inner')
-  })
-})
-
-// Reset poolSize
-Buffer.poolSize = 8192
-
-// --- Stream highWaterMark benchmarks ---
-
-function makeSource(total, chunkSize) {
-  let sent = 0
-  return new Readable({
-    read() {
-      if (sent >= total) {
-        this.push(null)
-        return
-      }
-      this.push(Buffer.allocUnsafe(chunkSize))
-      sent += chunkSize
-    }
-  })
-}
-
-function makeSink() {
-  return new Writable({
-    write(chunk, encoding, callback) {
-      do_not_optimize(chunk)
-      callback()
-    }
-  })
-}
-
-const TOTAL = 16 * 1024 * 1024 // 16 MB
-
-summary(() => {
-  group('stream pipeline 16 MB (highWaterMark)', () => {
-    bench('highWaterMark = 16384 (default)', async () => {
-      const src = makeSource(TOTAL, 1024)
-      const dst = makeSink()
-      await pipeline(src, dst)
-    })
-
-    bench('highWaterMark = 128 * 1024', async () => {
-      const src = new Readable({
-        highWaterMark: 128 * 1024,
-        read() {
-          if (this._sent >= TOTAL) { this.push(null); return }
-          this.push(Buffer.allocUnsafe(1024))
-          this._sent = (this._sent || 0) + 1024
-        }
-      })
-      const dst = new Writable({
-        highWaterMark: 128 * 1024,
-        write(chunk, encoding, callback) {
-          do_not_optimize(chunk)
-          callback()
-        }
-      })
-      await pipeline(src, dst)
+for (const size of [1024, 16 * 1024, 48 * 1024, 128 * 1024]) {
+  summary(() => {
+    group(`allocUnsafe(${size / 1024} KiB)`, () => {
+      bench(`poolSize ${Buffer.poolSize / 1024} KiB`, () => {
+        do_not_optimize(Buffer.allocUnsafe(size))
+      }).gc('inner')
     })
   })
-})
+}
 
 await run()

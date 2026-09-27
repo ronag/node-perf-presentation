@@ -1,0 +1,54 @@
+<!-- DEVELOPER COST VS COMPUTE COST -->
+<section id="dev-vs-compute-cost" data-chapter="When to optimize" data-chapter-num="01">
+  <section class="section-header">
+    <h2>Developer Cost vs Compute Cost</h2>
+    <p>The most important optimization decision</p>
+  </section>
+
+  <section>
+    <h2>The real cost equation</h2>
+    <div class="stack-v">
+      <div class="card good fragment fade-up"><span class="card-title">compute and/or memory saved per year &gt; dev hours × rate</span>Optimize. <em>When</em> the math works out.</div>
+      <div class="card warn fragment fade-up"><span class="card-title">maintainability ↓</span>Factor in future dev cost: clever code has compound interest.</div>
+      <div class="card info fragment fade-up"><span class="card-title">savings × N consumers</span>A shared library multiplies the win. Almost always worth it.</div>
+      <div class="card bad fragment fade-up"><span class="card-title">memory × instances</span>Compute is cheap, RAM is not. Bytes saved shrink every instance you run.</div>
+    </div>
+    <aside class="notes">⏱ 1:45. Shared libraries are the sweet spot: optimize once, everyone benefits.</aside>
+  </section>
+
+  <section>
+    <h2>When to optimize</h2>
+    <div class="cols-4">
+      <div class="card good"><span class="card-title">Hot paths</span>Code that runs millions of times per second</div>
+      <div class="card good"><span class="card-title">High scale</span>100+ servers: every % matters</div>
+      <div class="card good"><span class="card-title">Latency-sensitive</span>Real-time, trading, media</div>
+      <div class="card good"><span class="card-title">Constrained</span>Edge, IoT, memory-bound containers</div>
+    </div>
+    <p class="callout bad">Don't optimize code that runs once per request on two servers. <strong>Measure first</strong>, then decide.</p>
+    <aside class="notes">⏱ 2:15. Optional.</aside>
+  </section>
+
+  <section class="statement">
+    <h2>A disclaimer</h2>
+    <p class="lead">Most of the time, <strong>performance is not an issue</strong>.<br>Much of this talk is rarely relevant to day-to-day work.</p>
+    <p class="accent" style="margin-top:28px;font-size:1.1em">But when it is…</p>
+    <aside class="notes">⏱ 2:30.</aside>
+  </section>
+
+  <section>
+    <h2>When it matters, it really matters</h2>
+    <div class="cols">
+      <div class="card good fragment fade-up"><span class="card-title">Works vs doesn't</span>The difference between a system that keeps up and one that falls over at peak.</div>
+      <div class="card info fragment fade-up"><span class="card-title">One node vs a distributed system</span>Staying on a single node instead of a costly re-architecture: partial failures, consistency problems, operational complexity.</div>
+    </div>
+    <aside class="notes">⏱ 3:00.</aside>
+  </section>
+
+  <section class="statement">
+    <h2>Complexity is the enemy</h2>
+    <p class="lead">Optimized code and distributed systems are both harder to reason about, debug and maintain. Choose the lesser evil, and measure before you choose.</p>
+    <div class="quote" style="margin-top:36px;font-size:1.3em">“Simplicity is a necessary precondition for reliability.”</div>
+    <div class="quote-by">— Edsger W. Dijkstra</div>
+    <aside class="notes">⏱ 3:15.</aside>
+  </section>
+</section>

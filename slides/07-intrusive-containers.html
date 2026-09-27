@@ -1,0 +1,66 @@
+<!-- INTRUSIVE CONTAINERS -->
+<section id="intrusive-containers" data-chapter="Intrusive containers" data-chapter-num="06">
+  <section class="section-header">
+    <h2>Intrusive Containers</h2>
+    <p>The item carries its own bookkeeping</p>
+  </section>
+
+  <section>
+    <h2>Standard vs intrusive O(1) removal</h2>
+    <div class="cols">
+      <div>
+        <div class="col-label bad">Standard: wrapper nodes or scans</div>
+        <pre><code class="language-javascript">set.add(item)       // internal entry → GC
+set.delete(item)
+
+list.add(item)      // wrapper node → GC
+list.remove(item)
+
+arr.push(item)
+arr.splice(arr.indexOf(item), 1)   // O(n)</code></pre>
+      </div>
+      <div>
+        <div class="col-label good">Intrusive: zero allocations</div>
+        <pre><code class="language-javascript">function add (arr, item) {
+  item[kIndex] = arr.length
+  arr.push(item)
+}
+function remove (arr, item) {   // O(1) swap-remove
+  const last = arr.pop()
+  if (last !== item) {
+    arr[item[kIndex]] = last
+    last[kIndex] = item[kIndex]
+  }
+  item[kIndex] = -1
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>O(1) swap-remove</h2>
+    <div class="stack-v">
+      <div>
+        <div class="col-label bad">splice: every element after C shifts, O(n)</div>
+        <div class="cells"><span class="c">A</span><span class="c">B</span><span class="c hot">C</span><span class="c">D</span><span class="c">E</span><span class="sep">→</span><span class="c">A</span><span class="c">B</span><span class="c moved">D</span><span class="c moved">E</span></div>
+      </div>
+      <div class="fragment fade-up">
+        <div class="col-label good">swap-remove: move the last element into the hole, pop. O(1)</div>
+        <div class="cells"><span class="c">A</span><span class="c">B</span><span class="c hot">C</span><span class="c">D</span><span class="c">E</span><span class="sep">→</span><span class="c">A</span><span class="c">B</span><span class="c moved">E</span><span class="c">D</span></div>
+      </div>
+    </div>
+    <p class="callout">Order doesn't matter? Swap-remove. No wrapper nodes means nothing for the GC.</p>
+  </section>
+
+  <section data-core>
+    <h2>Standard vs intrusive containers</h2>
+    <div class="chart" data-unit="ns" data-scale="log" data-title="remove + re-add a random item, N = 10,000">
+      <div class="good" data-value="10.2" data-display="10.2 ns · 0 B">intrusive array (swap-remove)</div>
+      <div class="good" data-value="14.2" data-display="14.2 ns · 0 B">intrusive linked list</div>
+      <div data-value="59.5" data-display="59.5 ns · 29 B">Set delete + add</div>
+      <div data-value="103" data-display="103 ns · 89 B">linked list with wrapper nodes + Map</div>
+      <div class="bad" data-value="4000" data-display="4.0 µs">array indexOf + splice</div>
+    </div>
+    <p class="source">benchmarks/intrusive-containers.mjs · EPYC 9355P · Node 26.10 · log scale</p>
+  </section>
+</section>

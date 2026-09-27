@@ -1,0 +1,47 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+---------------------------------------------- -------------------------------
+• test 31 flags (any set?)
+---------------------------------------------- -------------------------------
+object: 31 || checks              1.36 ns/iter   1.36 ns   █                  
+                          (1.36 ns … 64.76 ns)   1.38 ns   █                  
+                       (  0.09  b …  11.73  b)   0.10  b ▁▁█▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+bitmap: state & ALL_SET         284.57 ps/iter 285.64 ps                   █  
+                        (258.79 ps … 61.42 ns) 288.09 ps                   █  
+                       (  0.09  b …   0.46  b)   0.09  b ▁▁▁▃▁▂▁▁▁▁▁▁▁▁▁▁▁▂█▃▂
+
+summary
+  bitmap: state & ALL_SET
+   4.79x faster than object: 31 || checks
+
+• update 31 flags (bulk reset)
+---------------------------------------------- -------------------------------
+object: 31 property writes        2.07 ns/iter   2.07 ns  █ ▃                 
+                         (2.06 ns … 168.78 ns)   2.10 ns  █ █                 
+                       (  0.09  b …   4.26  b)   0.09  b ▁█▂█▇▄▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+bitmap: state = 0               288.60 ps/iter 288.09 ps           █          
+                        (285.40 ps … 21.29 ns) 290.53 ps           █          
+                       (  0.09  b …   2.13  b)   0.09  b ▁▇▂▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▂
+
+summary
+  bitmap: state = 0
+   7.18x faster than object: 31 property writes
+
+• scan 65536 states for any flag set (cache-cold)
+---------------------------------------------- -------------------------------
+object: 31 property reads × 64K 427.71 µs/iter 432.87 µs           ▂█         
+                       (401.27 µs … 897.89 µs) 454.80 µs           ██▅        
+                       (432.00  b …  12.28 kb) 452.50  b ▃▆▂▄▆▅▃▄▃▆████▅▃▃▂▁▁▁
+
+bitmap: state & ALL_SET × 64K    24.36 µs/iter  24.33 µs            █         
+                        (21.43 µs … 951.05 µs)  26.48 µs            █         
+                       (  0.00  b …   7.68 kb)  33.20  b ▃▁▁▁▁▁▁▁▁▁▁█▄▁▁▃▃▁▁▁▁
+
+summary
+  bitmap: state & ALL_SET × 64K
+   17.56x faster than object: 31 property reads × 64K

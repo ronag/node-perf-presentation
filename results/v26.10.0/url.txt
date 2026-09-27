@@ -1,0 +1,36 @@
+clk: ~4.34 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• parse a request target
+------------------------------------------- -------------------------------
+new URL(target, base)        165.15 ns/iter 164.89 ns    ▅█                
+                    (158.74 ns … 439.00 ns) 186.90 ns    ██                
+                    ( 42.86  b … 367.98  b) 288.24  b ▁▆▇███▃▂▂▁▁▂▁▂▂▁▁▁▁▁▁
+
+URL.parse(target, base)      168.33 ns/iter 167.81 ns    █                 
+                    (163.42 ns … 372.70 ns) 186.48 ns    █                 
+                    (288.03  b … 354.57  b) 288.33  b ▂▁███▄▂▁▁▁▁▁▁▁▂▁▁▁▁▁▁
+
+url.parse(target) (legacy)   137.03 ns/iter 135.89 ns  █▄                  
+                    (132.63 ns … 699.73 ns) 155.12 ns  ██▂                 
+                    (307.27  b … 527.29  b) 310.54  b ▅███▅▂▂▂▁▁▁▁▁▁▁▂▂▁▁▁▁
+
+request-target               282.69 ns/iter 310.00 ns            █▇        
+                      (200.00 ns … 1.05 ms) 390.00 ns   ▃▅   █   ██        
+                    (432.00  b … 427.00 kb) 487.78  b ▁▂██▅▂▇█▇▄▁██▆▂▁▁▁▁▁▁
+
+indexOf("?") + slice          12.37 ns/iter  12.28 ns █                    
+                     (11.89 ns … 139.72 ns)  23.91 ns █▇                   
+                    ( 86.11  b …  90.28  b)  86.12  b ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  indexOf("?") + slice
+   11.08x faster than url.parse(target) (legacy)
+   13.35x faster than new URL(target, base)
+   13.61x faster than URL.parse(target, base)
+   22.85x faster than request-target
+(node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)

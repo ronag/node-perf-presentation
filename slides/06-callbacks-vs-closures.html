@@ -1,0 +1,76 @@
+<!-- CALLBACKS WITH OPAQUE VS CLOSURES -->
+<section id="callbacks-vs-closures" data-chapter="Callbacks + opaque vs closures" data-chapter-num="05">
+  <section class="section-header">
+    <h2>Callbacks w/ Opaque vs Closures</h2>
+    <p>Avoiding hidden allocation costs</p>
+  </section>
+
+  <section>
+    <h2>The hidden cost of closures</h2>
+    <div class="cols">
+      <div>
+        <div class="col-label bad">Closure: allocates per call</div>
+        <pre><code class="language-javascript">function sendLater (ctx) {
+  setTimeout(() => {
+    ctx.connection.write(ctx.payload)
+  }, 5000)
+}
+// new function object + context
+// kept alive (and promoted) for 5 s</code></pre>
+      </div>
+      <div>
+        <div class="col-label good">Static callback + opaque data</div>
+        <pre><code class="language-javascript">function onTimeout (ctx) {
+  ctx.connection.write(ctx.payload)
+}
+function sendLater (ctx) {
+  setTimeout(onTimeout, 5000, ctx)
+}
+// the callback is a static reference</code></pre>
+      </div>
+    </div>
+    <p class="muted">Node's <code>setTimeout(fn, ms, arg)</code> still allocates an args array. The win is biggest in APIs designed for <code>(fn, opaque)</code>.</p>
+  </section>
+
+  <section>
+    <h2>Why this matters at scale</h2>
+    <div class="chart" data-unit="µs" data-title="create and call 1,000 callbacks">
+      <div class="bad" data-value="5.38" data-display="5.38 µs · 126 KB">1,000 closures</div>
+      <div class="good" data-value="0.277" data-display="277 ns · 0 B" data-note="19×">static function + opaque</div>
+    </div>
+    <p class="muted">Closures capture their whole scope. Long-lived ones (timers, listeners, queued work) survive scavenges, get promoted, and are traced on every major GC.</p>
+    <p class="source">benchmarks/closures.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section>
+    <h2>A function queue: closures vs a flat array</h2>
+    <pre><code class="language-javascript">queue.push(() => handler(ctx))    // closure queue: one allocation per push
+
+class FlatQueue {                  // flat queue: [fn, opaque] pairs in one array
+  push (fn, opaque) { this.q.push(fn, opaque) }
+  drain () {
+    const q = this.q
+    for (let i = 0; i < q.length; i += 2) {
+      const fn = q[i], opaque = q[i + 1]
+      q[i] = q[i + 1] = undefined
+      fn(opaque)
+    }
+    q.length = 0
+  }
+}
+queue.push(handler, ctx)           // static function ref: zero allocations</code></pre>
+  </section>
+
+  <section data-core>
+    <h2>Closure queue vs flat queue</h2>
+    <div class="chart" data-unit="µs" data-title="push + drain 100 callbacks, reused queue">
+      <div class="bad" data-value="1.25" data-display="1.25 µs · 1.4 KB">closure queue</div>
+      <div class="good" data-value="0.372" data-display="372 ns · 0 B" data-note="3.4×">flat queue</div>
+    </div>
+    <div class="chart" data-unit="µs" data-title="push + drain 1,000 callbacks">
+      <div class="bad" data-value="17.1" data-display="17.1 µs · 103 KB">closure queue</div>
+      <div class="good" data-value="2.95" data-display="2.95 µs · 1 KB" data-note="5.8×">flat queue</div>
+    </div>
+    <p class="source">benchmarks/function-queue.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+</section>

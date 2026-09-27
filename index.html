@@ -3,62 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Performance in Node.js - Malmö JS 2026</title>
+  <title>Node.js Performance Tips &amp; Tricks · NodeConf EU 2026</title>
+  <meta name="description" content="Robert Nagy, NodeConf EU 2026 (Bologna): allocation-free hot paths, sync fast paths, cooperative scheduling, SQLite, Workers, and custom Node.js builds.">
   <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
-  <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/black.css">
   <link rel="stylesheet" href="node_modules/reveal.js/plugin/highlight/monokai.css">
-  <link rel="stylesheet" href="css/custom.css">
+  <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
 <div class="reveal">
 <div class="slides">
 
 <!--
-  Slides are split into separate files for easier editing.
-  Each file in slides/ is a self-contained <section> (or nested sections).
-  To add a new topic:
-    1. Create a new file in slides/ (e.g. slides/20-new-topic.html)
-    2. Add a <div data-include="slides/20-new-topic.html"></div> below
+  Each file in slides/ is one chapter: a top-level <section> with vertical
+  child <section>s. js/deck.js inlines them in order, adds the chapter kicker
+  to every slide, renders .chart bar charts, and marks backup chapters
+  uncounted.
+
+  Chapter attributes on the top-level <section>:
+    data-chapter="Name"        kicker text on every slide in the chapter
+    data-chapter-num="04"      kicker number
+    data-appendix              uncounted backup slides (after "Thank you")
+
+  Speaker notes (press S) carry a ⏱ target time and mark optional slides.
 -->
 
-<!-- Foundation: Why & What -->
+<!-- Why & how to measure -->
 <div data-include="slides/00-title.html"></div>
-<div data-include="slides/01-dev-vs-compute-cost.html"></div>
-<div data-include="slides/02-benchmarks.html"></div>
-<div data-include="slides/03-garbage-collection.html"></div>
+<div data-include="slides/01-intro.html"></div>
+<div data-include="slides/02-dev-vs-compute-cost.html"></div>
+<div data-include="slides/03-benchmarks.html"></div>
 
-<!-- Core Patterns: Allocation-free building blocks -->
-<div data-include="slides/04-callbacks-vs-closures.html"></div>
-<div data-include="slides/05-intrusive-containers.html"></div>
-<div data-include="slides/06-bitmap-state.html"></div>
-<div data-include="slides/07-buffers-and-slices.html"></div>
-<div data-include="slides/08-streams.html"></div>
+<!-- The runtime itself -->
+<div data-include="slides/04-custom-builds.html"></div>
+<div data-include="slides/05-garbage-collection.html"></div>
 
-<!-- Async: When sync beats async -->
-<div data-include="slides/09-async-overhead.html"></div>
-<div data-include="slides/10-sync-vs-async.html"></div>
+<!-- Allocation-free building blocks -->
+<div data-include="slides/06-callbacks-vs-closures.html"></div>
+<div data-include="slides/07-intrusive-containers.html"></div>
+<div data-include="slides/08-bitmap-state.html"></div>
+<div data-include="slides/09-buffers-and-slices.html"></div>
+<div data-include="slides/10-streams.html"></div>
+<div data-include="slides/11-http.html"></div>
+
+<!-- Async: when sync beats async -->
+<div data-include="slides/12-async-overhead.html"></div>
+<div data-include="slides/13-sync-vs-async.html"></div>
+<div data-include="slides/14-sqlite.html"></div>
 
 <!-- Web APIs -->
-<div data-include="slides/11-web-apis.html"></div>
+<div data-include="slides/15-web-apis.html"></div>
 
-<!-- Single-Thread Optimizations -->
-<div data-include="slides/12-fast-timers.html"></div>
-<div data-include="slides/13-fast-cache.html"></div>
-<div data-include="slides/14-yielding.html"></div>
-<div data-include="slides/15-scheduling.html"></div>
-<div data-include="slides/16-deferred-work.html"></div>
+<!-- Single-thread: time, caches, scheduling -->
+<div data-include="slides/16-fast-timers.html"></div>
+<div data-include="slides/17-fast-cache.html"></div>
+<div data-include="slides/18-yielding.html"></div>
+<div data-include="slides/19-scheduling.html"></div>
+<div data-include="slides/20-deferred-work.html"></div>
 
-<!-- Multi-Thread: Scaling across cores -->
-<div data-include="slides/17-cluster-vs-workers.html"></div>
-<div data-include="slides/18-uv-threadpool.html"></div>
-<div data-include="slides/19-cross-thread.html"></div>
-<div data-include="slides/20-atomics.html"></div>
+<!-- Multi-thread: scaling across cores -->
+<div data-include="slides/21-cluster-vs-workers.html"></div>
+<div data-include="slides/22-uv-threadpool.html"></div>
+<div data-include="slides/23-cross-thread.html"></div>
+<div data-include="slides/24-atomics.html"></div>
 
-<!-- Tuning & Wrap-up -->
-<div data-include="slides/21-summary.html"></div>
+<!-- Wrap-up -->
+<div data-include="slides/25-production-stories.html"></div>
+<div data-include="slides/26-summary.html"></div>
 
-<!-- Backup Topics -->
-<div data-include="slides/22-concurrency-vs-parallelism.html"></div>
+<!-- Backup -->
+<div data-include="slides/27-concurrency-vs-parallelism.html"></div>
 
 </div><!-- /.slides -->
 </div><!-- /.reveal -->
@@ -66,34 +79,6 @@
 <script src="node_modules/reveal.js/dist/reveal.js"></script>
 <script src="node_modules/reveal.js/plugin/highlight/highlight.js"></script>
 <script src="node_modules/reveal.js/plugin/notes/notes.js"></script>
-<script>
-// Load all slide includes, then initialize Reveal
-async function loadSlides() {
-  const includes = document.querySelectorAll('[data-include]')
-  await Promise.all(Array.from(includes).map(async (el) => {
-    const resp = await fetch(el.getAttribute('data-include'))
-    if (resp.ok) {
-      el.outerHTML = await resp.text()
-    } else {
-      console.error(`Failed to load ${el.getAttribute('data-include')}`)
-    }
-  }))
-}
-
-loadSlides().then(() => {
-  Reveal.initialize({
-    hash: true,
-    slideNumber: true,
-    transition: 'slide',
-    width: 1280,
-    height: 720,
-    margin: 0.01,
-    center: true,
-    controls: false,
-    progress: false,
-    plugins: [RevealHighlight, RevealNotes],
-  })
-})
-</script>
+<script src="js/deck.js"></script>
 </body>
 </html>

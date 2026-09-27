@@ -1,43 +1,54 @@
 {
-  "name": "malmojs-2026",
-  "version": "1.0.0",
-  "description": "Performance in Node.js - Malmö JS 2026 presentation",
-  "main": "index.html",
+  "name": "nodeconf-eu-2026-node-performance",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Node.js Performance Tips & Tricks: NodeConf EU 2026 talk by Robert Nagy (slides + benchmarks)",
+  "type": "module",
   "scripts": {
-    "start": "npx serve .",
-    "bench": "node --expose-gc benchmarks/timers.mjs && node --expose-gc benchmarks/closures.mjs && node --expose-gc benchmarks/async-overhead.mjs && node --expose-gc benchmarks/slice.mjs && node --expose-gc benchmarks/gc-pressure.mjs",
-    "bench:timers": "node --expose-gc benchmarks/timers.mjs",
-    "bench:closures": "node --expose-gc benchmarks/closures.mjs",
+    "start": "node scripts/serve.mjs",
+    "bench": "node scripts/bench-all.mjs",
     "bench:async": "node --expose-gc benchmarks/async-overhead.mjs",
-    "bench:slice": "node --expose-gc benchmarks/slice.mjs",
-    "bench:gc": "node --expose-gc benchmarks/gc-pressure.mjs",
-    "bench:cache": "node --expose-gc benchmarks/cache.mjs",
-    "bench:shared": "node --expose-gc benchmarks/cross-thread.mjs",
+    "bench:async-return": "node --expose-gc benchmarks/async-return.mjs",
     "bench:atomics": "node --expose-gc benchmarks/atomics.mjs",
+    "bench:bitmap": "node --expose-gc benchmarks/bitmap.mjs",
+    "bench:cache": "node --expose-gc benchmarks/cache.mjs",
+    "bench:closures": "node --expose-gc benchmarks/closures.mjs",
+    "bench:cross-thread": "node --expose-gc benchmarks/cross-thread.mjs",
+    "bench:fast-time": "node --expose-gc benchmarks/fast-time.mjs",
+    "bench:fs": "node --expose-gc benchmarks/fs-sync-vs-async.mjs",
+    "bench:gc": "node --expose-gc benchmarks/gc-pressure.mjs",
+    "bench:intrusive": "node --expose-gc benchmarks/intrusive-containers.mjs",
+    "bench:map-same-key": "node --expose-gc benchmarks/map-same-key.mjs",
+    "bench:poolsize": "node --expose-gc benchmarks/poolsize.mjs && BUFFER_POOL_SIZE=1048576 node --expose-gc benchmarks/poolsize.mjs",
     "bench:queue": "node --expose-gc benchmarks/function-queue.mjs",
-    "bench:async-return": "node --expose-gc benchmarks/async-return.mjs"
+    "bench:semi-space": "node --expose-gc benchmarks/semi-space.mjs && node --expose-gc --max-semi-space-size=64 benchmarks/semi-space.mjs",
+    "bench:slice": "node --expose-gc benchmarks/slice.mjs",
+    "bench:sqlite": "node --expose-gc benchmarks/sqlite-pragmas.mjs && node benchmarks/sqlite-cache-shards.mjs",
+    "bench:streams": "node --expose-gc benchmarks/streams.mjs",
+    "bench:subarray": "node --expose-gc benchmarks/subarray-vs-slice.mjs",
+    "bench:threadpool": "UV_THREADPOOL_SIZE=4 node benchmarks/uv-threadpool.mjs && UV_THREADPOOL_SIZE=16 node benchmarks/uv-threadpool.mjs",
+    "bench:timers": "node --expose-gc benchmarks/timers.mjs",
+    "bench:url": "node --expose-gc benchmarks/url.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ronag/malmojs-2026.git"
+    "url": "git+https://github.com/ronag/node-perf-presentation.git"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Robert Nagy",
   "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/ronag/malmojs-2026/issues"
+  "homepage": "https://github.com/ronag/node-perf-presentation#readme",
+  "engines": {
+    "node": ">=26.1"
   },
-  "homepage": "https://github.com/ronag/malmojs-2026#readme",
   "dependencies": {
-    "@nxtedition/scheduler": "^3.0.12",
-    "@nxtedition/shared": "^1.0.13",
-    "@nxtedition/slice": "^1.0.10",
-    "@nxtedition/timers": "^1.0.2",
-    "@nxtedition/yield": "^1.0.11",
     "lru-cache": "^11.2.6",
     "mitata": "^1.0.34",
-    "piscina": "^5.1.4",
     "reveal.js": "^5.2.1"
+  },
+  "optionalDependencies": {
+    "@nxtedition/cache": "^3.3.12",
+    "@nxtedition/shared": "^6.0.8",
+    "@nxtedition/slice": "^2.1.1",
+    "@nxtedition/timers": "^1.1.16"
   }
 }

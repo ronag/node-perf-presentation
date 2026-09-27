@@ -1,0 +1,61 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• stream allocation (per HTTP request cost)
+------------------------------------------- -------------------------------
+new ReadableStream (Web)       6.07 µs/iter   4.75 µs  █                   
+                      (3.63 µs … 193.49 µs)  18.18 µs ▅█▅▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.30 ms …   4.40 ms)   2.13 kb (  1.64 kb… 21.77 kb)
+
+new Readable (Node)           19.63 ns/iter  21.55 ns █                    
+                      (18.25 ns … 37.49 ns)  22.95 ns ██▁▁▁▁▂▂▂▁▁▁▁▁▄▆▁▂▁▁▁
+                  gc(  2.35 ms …   4.35 ms) 377.01  b (376.16  b…435.69  b)
+
+summary
+  new Readable (Node)
+   309.17x faster than new ReadableStream (Web)
+
+• read-only: consume stream (64KB x 500)
+------------------------------------------- -------------------------------
+Web ReadableStream            34.68 µs/iter  33.00 µs  █                   
+                       (31.80 µs … 2.99 ms)  44.77 µs  █▄                  
+                    (123.24 kb … 409.01 kb) 136.81 kb ▃██▄▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+Node Readable (events)        17.22 µs/iter  16.43 µs  ▄█                  
+                       (15.80 µs … 3.09 ms)  21.09 µs  ██                  
+                    ( 14.27 kb … 686.50 kb)  14.54 kb ▂██▇▃▁▁▁▁▁▁▁▁▂▂▁▁▁▁▁▁
+
+summary
+  Node Readable (events)
+   2.01x faster than Web ReadableStream
+
+• write-only: push to stream sink (64KB x 500)
+------------------------------------------- -------------------------------
+Web WritableStream            61.92 µs/iter  60.49 µs    █                 
+                       (54.10 µs … 2.42 ms)  93.70 µs    █                 
+                    (200.10 kb … 288.65 kb) 237.62 kb ▁▁▂█▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+Node Writable                 13.32 µs/iter  13.01 µs  █                   
+                       (12.35 µs … 3.27 ms)  15.42 µs  █  ▂                
+                    (  2.16 kb … 486.64 kb)   2.26 kb ▁██▃█▆▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  Node Writable
+   4.65x faster than Web WritableStream
+
+• pipeline passthrough (64KB x 500)
+------------------------------------------- -------------------------------
+Web Streams pipeline          61.60 µs/iter  57.96 µs █                    
+                       (54.97 µs … 3.00 ms) 170.16 µs █▂                   
+                    (115.36 kb …   2.24 mb) 165.30 kb ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+Node Streams pipeline         45.64 µs/iter  38.41 µs  █                   
+                       (36.34 µs … 8.48 ms)  64.55 µs  █                   
+                    ( 10.34 kb …   1.60 mb)  26.41 kb ▇█▇▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  Node Streams pipeline
+   1.35x faster than Web Streams pipeline

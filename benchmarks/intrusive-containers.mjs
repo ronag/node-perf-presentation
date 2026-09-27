@@ -1,5 +1,10 @@
 // Benchmark: Intrusive unordered array vs linked list vs normal array
-// Measures remove + re-add on pre-filled containers (N=10000)
+// Measures remove + re-add of a random item on pre-filled containers (N=10000).
+//
+// The item changes every iteration (a precomputed random order). Removing and
+// re-adding the *same* item every iteration would benchmark a V8 Map/Set
+// pathology instead (see map-same-key.mjs): the wrapper-node list's Map
+// lookup becomes O(n) and dominates everything.
 import { run, bench, group, summary, do_not_optimize } from 'mitata'
 
 const N = 10000
@@ -26,7 +31,7 @@ class IntrusiveArray {
   }
 }
 
-// --- Doubly linked list ---
+// --- Intrusive doubly linked list ---
 class LinkedList {
   head = null
   tail = null
@@ -49,11 +54,11 @@ class LinkedList {
   }
 }
 
-// --- Non-intrusive linked list (wrapper nodes) ---
+// --- Non-intrusive linked list (wrapper nodes + Map for O(1) lookup) ---
 class WrapperLinkedList {
   head = null
   tail = null
-  nodeMap = new Map() // item → node lookup for O(1) remove
+  nodeMap = new Map() // item → node
   add(item) {
     const node = { value: item, prev: this.tail, next: null }
     if (this.tail) this.tail.next = node
@@ -73,6 +78,13 @@ class WrapperLinkedList {
   }
 }
 
+// --- Set (what most people reach for) ---
+class SetContainer {
+  items = new Set()
+  add(item) { this.items.add(item) }
+  remove(item) { this.items.delete(item) }
+}
+
 // --- Normal array (indexOf + splice) ---
 class NormalArray {
   items = []
@@ -83,108 +95,60 @@ class NormalArray {
   }
 }
 
-// Pre-create items
+// Pre-create items and a random visiting order (deterministic LCG)
 const items = Array.from({ length: N }, () => ({}))
+const order = new Uint32Array(1 << 16)
+let seed = 1
+for (let i = 0; i < order.length; i++) {
+  seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+  order[i] = seed % N
+}
 
 // Pre-fill containers
 const ia = new IntrusiveArray()
 const ll = new LinkedList()
 const wl = new WrapperLinkedList()
+const sc = new SetContainer()
 const na = new NormalArray()
-for (const item of items) { ia.add(item); ll.add(item); wl.add(item); na.add(item) }
+for (const item of items) { ia.add(item); ll.add(item); wl.add(item); sc.add(item); na.add(item) }
 
-// --- Remove head + re-add ---
 summary(() => {
-  group('remove + add head (N=10000)', () => {
-    bench('intrusive array (swap)', () => {
-      const item = items[0]
+  group(`remove + re-add a random item (N=${N})`, () => {
+    let a = 0
+    bench('intrusive array (swap-remove)', () => {
+      const item = items[order[a++ & 0xffff]]
       ia.remove(item)
       ia.add(item)
       do_not_optimize(ia.items.length)
     }).gc('inner')
 
+    let b = 0
     bench('intrusive linked list', () => {
-      const item = items[0]
+      const item = items[order[b++ & 0xffff]]
       ll.remove(item)
       ll.add(item)
       do_not_optimize(ll.tail)
     }).gc('inner')
 
-    bench('linked list (wrapper nodes)', () => {
-      const item = items[0]
+    let c = 0
+    bench('Set (delete + add)', () => {
+      const item = items[order[c++ & 0xffff]]
+      sc.remove(item)
+      sc.add(item)
+      do_not_optimize(sc.items.size)
+    }).gc('inner')
+
+    let d = 0
+    bench('linked list (wrapper nodes + Map)', () => {
+      const item = items[order[d++ & 0xffff]]
       wl.remove(item)
       wl.add(item)
       do_not_optimize(wl.nodeMap.size)
     }).gc('inner')
 
+    let e = 0
     bench('array (indexOf + splice)', () => {
-      const item = items[0]
-      na.remove(item)
-      na.add(item)
-      do_not_optimize(na.items.length)
-    }).gc('inner')
-  })
-})
-
-// --- Remove middle + re-add ---
-summary(() => {
-  group('remove + add middle (N=10000)', () => {
-    bench('intrusive array (swap)', () => {
-      const item = items[N >> 1]
-      ia.remove(item)
-      ia.add(item)
-      do_not_optimize(ia.items.length)
-    }).gc('inner')
-
-    bench('intrusive linked list', () => {
-      const item = items[N >> 1]
-      ll.remove(item)
-      ll.add(item)
-      do_not_optimize(ll.tail)
-    }).gc('inner')
-
-    bench('linked list (wrapper nodes)', () => {
-      const item = items[N >> 1]
-      wl.remove(item)
-      wl.add(item)
-      do_not_optimize(wl.nodeMap.size)
-    }).gc('inner')
-
-    bench('array (indexOf + splice)', () => {
-      const item = items[N >> 1]
-      na.remove(item)
-      na.add(item)
-      do_not_optimize(na.items.length)
-    }).gc('inner')
-  })
-})
-
-// --- Remove tail + re-add ---
-summary(() => {
-  group('remove + add tail (N=10000)', () => {
-    bench('intrusive array (swap)', () => {
-      const item = items[N - 1]
-      ia.remove(item)
-      ia.add(item)
-      do_not_optimize(ia.items.length)
-    }).gc('inner')
-
-    bench('intrusive linked list', () => {
-      const item = items[N - 1]
-      ll.remove(item)
-      ll.add(item)
-      do_not_optimize(ll.tail)
-    }).gc('inner')
-
-    bench('linked list (wrapper nodes)', () => {
-      const item = items[N - 1]
-      wl.remove(item)
-      wl.add(item)
-      do_not_optimize(wl.nodeMap.size)
-    }).gc('inner')
-
-    bench('array (indexOf + splice)', () => {
-      const item = items[N - 1]
+      const item = items[order[e++ & 0xffff]]
       na.remove(item)
       na.add(item)
       do_not_optimize(na.items.length)

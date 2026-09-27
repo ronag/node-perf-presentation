@@ -1,0 +1,6 @@
+64 B messages, 1,000,000 per run, median of 5
+  MessagePort.postMessage  1.09 M msg/s
+  shared ring buffer       36.97 M msg/s  (33.8×)
+1024 B messages, 1,000,000 per run, median of 5
+  MessagePort.postMessage  0.77 M msg/s
+  shared ring buffer       28.07 M msg/s  (36.3×)

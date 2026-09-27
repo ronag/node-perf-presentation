@@ -1,0 +1,29 @@
+<!-- INTRO: MENTAL MODEL -->
+<section id="intro">
+
+  <section data-core class="no-kicker">
+    <h2>Where Node.js spends your time</h2>
+    <div class="costmap">
+      <div class="cost fragment fade-up"><b>The runtime itself</b>Generic compiler flags, 64-bit pointers, no profile. <span class="accent">→ custom builds</span></div>
+      <div class="cost fragment fade-up"><b>Allocation → GC</b>Every object is future work for the collector. <span class="accent">→ allocation-free patterns</span></div>
+      <div class="cost fragment fade-up"><b>Async machinery</b>Promises, microtasks, thread-pool round trips. <span class="accent">→ sync fast paths</span></div>
+      <div class="cost fragment fade-up"><b>A blocked loop</b>Long tasks and microtask floods starve I/O. <span class="accent">→ yielding, priorities</span></div>
+      <div class="cost fragment fade-up"><b>Storage</b>fsync, write locks, statement preparation. <span class="accent">→ SQLite</span></div>
+      <div class="cost fragment fade-up"><b>Threads</b>Serialization, copies, contention. <span class="accent">→ Workers, shared memory</span></div>
+    </div>
+    <aside class="notes">⏱ 0:30. The mental model for the talk: six places time goes, and what we do about each.</aside>
+  </section>
+
+  <section data-core class="statement no-kicker">
+    <h2>Compute is cheap. <span class="accent">Memory is not.</span></h2>
+    <p class="lead">RAM sets your instance size and your bill. Every live byte is something the GC traces and the CPU cache misses.</p>
+    <div class="stats" style="margin-top:32px;width:100%">
+      <div class="stat good fragment fade-up"><span class="stat-value">MEM_PC_HEAP</span><span class="stat-label">V8 heap with pointer compression</span></div>
+      <div class="stat good fragment fade-up"><span class="stat-value">−43%</span><span class="stat-label">bytes per live timer, pooled vs native</span></div>
+      <div class="stat good fragment fade-up"><span class="stat-value">17.6×</span><span class="stat-label">faster scan when state is packed into bitmaps</span></div>
+    </div>
+    <aside class="notes">⏱ 1:15. The thread through the talk: we optimize bytes as much as nanoseconds. Fewer bytes means a smaller heap,
+      less GC, fewer cache misses, smaller instances.</aside>
+  </section>
+
+</section>

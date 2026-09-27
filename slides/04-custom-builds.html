@@ -1,0 +1,161 @@
+<!-- BUILD YOUR OWN NODE -->
+<section id="custom-builds" data-chapter="Build your own Node" data-chapter-num="03">
+  <section class="section-header">
+    <h2>Build Your Own Node</h2>
+    <p>The runtime itself is a performance knob</p>
+  </section>
+
+  <section data-core>
+    <h2>The official binary runs on every x86 CPU since 2003</h2>
+    <p class="lead">Great for compatibility. It leaves speed and memory on the table. Seven steps, each benchmarked on its own:</p>
+    <div class="flow">
+      <div class="step fragment fade-up"><b>1 · Clang 23</b>a newer compiler</div>
+      <div class="step fragment fade-up"><b>2 · Patch V8</b>a faster Buffer.copy API</div>
+      <div class="step fragment fade-up"><b>3 · LTO</b>whole-program optimization</div>
+      <div class="step fragment fade-up"><b>4 · mimalloc</b>a faster allocator</div>
+      <div class="step fragment fade-up"><b>5 · -march</b>AVX2, BMI2, FMA</div>
+      <div class="step fragment fade-up"><b>6 · PGO</b>profile from our workloads</div>
+      <div class="step fragment fade-up"><b>7 · Pointer compression</b>32-bit heap pointers</div>
+    </div>
+    <div class="stats fragment fade-up" style="margin-top:26px">
+      <div class="stat good"><span class="stat-value">B_TOTAL_HTTP</span><span class="stat-label">HTTP req/s, official → all seven</span></div>
+      <div class="stat good"><span class="stat-value">B_TOTAL_JSON</span><span class="stat-label">JSON.parse throughput</span></div>
+      <div class="stat good"><span class="stat-value">B_TOTAL_RSS</span><span class="stat-label">RSS for 2M live objects</span></div>
+    </div>
+    <p class="source">Same Node 26.10.0 source for every build. Built and measured on an AMD EPYC 9355P (Zen 5): 14 workload groups, median of interleaved runs, pinned cores.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 1: a newer compiler</h2>
+    <pre><code class="language-bash">CC=clang-23 CXX=clang++-23 ./configure   # the official 26.10 binary: Clang 20.1, no LTO</code></pre>
+    <div class="chart" data-signed data-unit="%" data-title="official node:26.10.0 → the same source built with Clang 23 (glibc malloc)">
+      B_STEP_CLANG_ROWS
+    </div>
+    <p class="muted">Trap: Node's <code>configure</code> doesn't pass your CFLAGS to V8. Inject flags with a compiler wrapper, and check that they landed.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 2: customize V8</h2>
+    <p class="lead">A 60-line patch adds <code>v8::ArrayBufferView::CopyArrayBufferViewBytes</code>, so <code>Buffer.copy</code> copies between views without materializing their ArrayBuffers.</p>
+    <div class="chart" data-signed data-unit="%" data-title="Clang 23 → + V8 patch">
+      B_STEP_V8_ROWS
+    </div>
+    <p class="muted">It's your runtime: small, targeted patches (and upstreaming them) are fair game. Rebase them on every release, and run the full test suite.</p>
+    <p class="source">The same change is proposed upstream as nodejs/node#63892.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 3: link-time optimization</h2>
+    <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
+    <div class="chart" data-signed data-unit="%" data-title="Clang 23 + V8 patch → + full LTO">
+      B_STEP_LTO_ROWS
+    </div>
+    <p class="muted">Costs: link time (~5.5 GiB RSS per link) and a slower rebuild loop. Link with BFD; LLD and gold broke a SEA test for us.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 4: a better allocator</h2>
+    <pre><code class="language-bash">LD_PRELOAD=/usr/local/lib/libmimalloc.so MIMALLOC_PURGE_DELAY=1000 node app.js   # no rebuild</code></pre>
+    <div class="chart" data-signed data-unit="%" data-title="glibc malloc → mimalloc (same binary)">
+      B_STEP_MIMALLOC_ROWS
+    </div>
+    <p class="muted">The purge delay is a dial: returning freed pages immediately saves RSS but costs throughput (+51% with 1 s on a buffer-copy-heavy service, for +55 MiB RSS).</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 5: compile for the CPU you run on</h2>
+    <pre><code class="language-bash">-march=x86-64-v3 -mtune=znver3     # AVX2 · BMI2 · FMA · F16C</code></pre>
+    <div class="chart" data-signed data-unit="%" data-title="+ mimalloc → + -march (same compiler, same flags otherwise)">
+      B_STEP_MARCH_ROWS
+    </div>
+    <p class="muted"><strong><code>-mtune</code> is free; <code>-march</code> is a contract.</strong> On a CPU older than Haswell / Zen 1 the binary dies with SIGILL. Watch generic VM CPU models.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 6: profile-guided optimization</h2>
+    <div class="flow">
+      <div class="step"><b>1 · Instrument</b><code>-fprofile-generate</code><br>atomic counters (multi-threaded)</div>
+      <div class="arrow">→</div>
+      <div class="step"><b>2 · Train, 120 s</b>12 workloads: JSON, Buffers, HTTP, Workers + reusePort, streams, TLS, GC, …</div>
+      <div class="arrow">→</div>
+      <div class="step"><b>3 · Merge + rebuild</b><code>llvm-profdata --weighted-input</code>, <code>-fprofile-use</code></div>
+    </div>
+    <div class="chart" data-signed data-unit="%" data-title="+ -march → + PGO">
+      B_STEP_PGO_ROWS
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>PGO: you get what you train</h2>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">−93%</span><span class="stat-label"><code>buf.swap16()</code> when the training corpus never called it: its loop was optimized for size</span></div>
+      <div class="stat good"><span class="stat-value">+1,457%</span><span class="stat-label">after adding a few swaps to the corpus (same source)</span></div>
+    </div>
+    <ul style="margin-top:18px">
+      <li>Train on what production runs: weight the corpus like your traffic.</li>
+      <li>A narrow corpus overfits: a JSON-only profile made escaped strings slower.</li>
+      <li>Retrain on every Node version bump. V8's Torque/CSA builtins aren't reached by Clang PGO.</li>
+    </ul>
+    <p class="source">Clang IR-PGO, Node 26.5, EPYC 9355P</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 7: pointer compression, half the heap</h2>
+    <pre><code class="language-bash">./configure --experimental-enable-pointer-compression   # 32-bit tagged pointers</code></pre>
+    <div class="stats">
+      <div class="stat good"><span class="stat-value">B_PC_HEAP</span><span class="stat-label">live V8 heap, 1M records</span></div>
+      <div class="stat good"><span class="stat-value">B_PC_RSS</span><span class="stat-label">RSS, 2M-object graph</span></div>
+      <div class="stat good"><span class="stat-value">B_PC_ALLOC</span><span class="stat-label">allocation throughput</span></div>
+      <div class="stat good"><span class="stat-value">B_PC_GC</span><span class="stat-label">full GC pause</span></div>
+    </div>
+    <div class="chart" data-signed data-unit="%" data-title="+ PGO → + pointer compression" style="margin-top:14px">
+      B_STEP_PC_ROWS
+    </div>
+  </section>
+
+  <section>
+    <h2>Pointer compression: the fine print</h2>
+    <div class="cols-3">
+      <div class="card warn"><span class="card-title">4 GiB heap per isolate</span>Each Worker gets its own cage, so a process with Workers can still use more in total.</div>
+      <div class="card bad"><span class="card-title">A different addon ABI</span>Prebuilt <code>.node</code> binaries for stock Node crash: rebuild native addons. N-API addons work; old V8-API addons don't.</div>
+      <div class="card warn"><span class="card-title">Some code gets slower</span>Decompressing pointers costs a little on pointer-heavy hot loops: B_PC_COST</div>
+    </div>
+    <p class="callout">Memory is what you pay for. This is the single biggest memory win we have, and production runs it.</p>
+  </section>
+
+  <section data-core>
+    <h2>All together: official → our build</h2>
+    B_TABLE
+    <p class="source">Median of interleaved runs · EPYC 9355P · Node 26.10.0 · each column adds one step to the one before</p>
+  </section>
+
+  <section>
+    <h2>How to build it</h2>
+    <pre><code class="language-dockerfile"># compiler wrapper adds: -O3 -march=x86-64-v3 -mtune=znver3 [-fprofile-generate | -fprofile-use=…]
+ENV CC=/usr/local/bin/cc-wrap CXX=/usr/local/bin/c++-wrap
+RUN git apply v8-copy-array-buffer-view-bytes.patch
+
+RUN ./configure --enable-lto --experimental-enable-pointer-compression \
+ && NODE_PGO=generate make -j"$(nproc)"                     # 1. instrumented build
+RUN ./out/Release/node train.mjs                             # 2. run the corpus (120 s)
+RUN llvm-profdata merge --weighted-input=16,json.profdata … -o node.profdata
+RUN make distclean && ./configure --enable-lto … \
+ && NODE_PGO=use make -j"$(nproc)"                          # 3. optimized build
+RUN make test-ci                                             # it's your runtime now: test it</code></pre>
+    <p class="muted">Two full compiles plus training: hours, not minutes. Cache them as Docker layers and rebuild per Node release.</p>
+  </section>
+
+  <section data-core>
+    <h2>…or just tune the one you have</h2>
+    <table class="data">
+      <thead><tr><th>Knob</th><th>Default</th><th>Tuned</th><th class="num">Effect</th></tr></thead>
+      <tbody>
+        <tr class="fragment fade-up"><td><code>--max-semi-space-size=64</code></td><td>scales with RAM</td><td>64 MiB</td><td class="num win">+27% allocation-heavy throughput</td></tr>
+        <tr class="fragment fade-up"><td><code>Buffer.poolSize = 1 &lt;&lt; 20</code></td><td>64 KiB</td><td>1 MiB</td><td class="num win">16 KiB allocUnsafe 1.55× faster</td></tr>
+        <tr class="fragment fade-up"><td><code>UV_THREADPOOL_SIZE=16</code></td><td>4 threads</td><td>16</td><td class="num win">3–3.5× blocking crypto / mixed work</td></tr>
+        <tr class="fragment fade-up"><td><code>LD_PRELOAD=libmimalloc.so</code></td><td>glibc malloc</td><td>mimalloc</td><td class="num win">B_MIMALLOC_HEADLINE</td></tr>
+      </tbody>
+    </table>
+    <p class="source">benchmarks/semi-space.mjs, poolsize.mjs, uv-threadpool.mjs · EPYC 9355P · Node 26.10</p>
+  </section>
+</section>

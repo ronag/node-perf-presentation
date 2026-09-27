@@ -1,0 +1,571 @@
+/* ─────────────────────────────────────────────────────────────
+   NodeConf EU 2026 – "Node.js Performance Tips & Tricks"
+   Theme + component library for reveal.js (1280×720 canvas)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Tokens ─────────────────────────────────────────────────── */
+:root {
+  --bg: #0d0f12;
+  --surface: #15181d;
+  --surface-2: #1c2027;
+  --line: #2b3038;
+  --text: #ecebe8;
+  --muted: #a4aab2;
+  --faint: #6f767f;
+  --accent: #f2b25c;
+  --accent-soft: rgba(242, 178, 92, 0.12);
+  --good: #7ccf6a;
+  --good-soft: rgba(124, 207, 106, 0.12);
+  --bad: #ff6b6b;
+  --bad-soft: rgba(255, 107, 107, 0.12);
+  --info: #62b0ff;
+  --info-soft: rgba(98, 176, 255, 0.12);
+  --violet: #c792ea;
+  --code-bg: #101216;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --r-background-color: var(--bg);
+  --r-main-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --r-main-font-size: 30px;
+  --r-main-color: var(--text);
+  --r-heading-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --r-heading-color: #fff;
+  --r-heading-font-weight: 750;
+  --r-heading-letter-spacing: -0.02em;
+  --r-heading-text-transform: none;
+  --r-heading-text-shadow: none;
+  --r-heading-line-height: 1.12;
+  --r-heading-margin: 0 0 18px;
+  --r-heading1-size: 2.5em;
+  --r-heading2-size: 1.55em;
+  --r-heading3-size: 1.2em;
+  --r-heading4-size: 1em;
+  --r-block-margin: 14px;
+  --r-code-font: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r-link-color: var(--info);
+  --r-link-color-hover: #9ccbff;
+  --r-selection-background-color: var(--accent);
+  --r-selection-color: #111;
+}
+
+/* ── Base theme (replaces reveal's bundled themes) ─────────── */
+.reveal {
+  font-family: var(--r-main-font);
+  font-size: var(--r-main-font-size);
+  font-weight: 400;
+  color: var(--r-main-color);
+  -webkit-font-smoothing: antialiased;
+}
+.reveal .slides section { line-height: 1.35; font-weight: inherit; }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  margin: var(--r-heading-margin);
+  color: var(--r-heading-color);
+  font-family: var(--r-heading-font);
+  font-weight: var(--r-heading-font-weight);
+  line-height: var(--r-heading-line-height);
+  letter-spacing: var(--r-heading-letter-spacing);
+  text-transform: none;
+  text-shadow: none;
+  word-wrap: break-word;
+}
+.reveal h1 { font-size: var(--r-heading1-size); }
+.reveal h2 { font-size: var(--r-heading2-size); }
+.reveal h3 { font-size: var(--r-heading3-size); }
+.reveal h4 { font-size: var(--r-heading4-size); }
+.reveal a { color: var(--r-link-color); }
+.reveal code { font-family: var(--r-code-font); }
+.reveal pre { display: block; position: relative; text-align: left; font-family: var(--r-code-font); line-height: 1.2em; word-wrap: break-word; }
+.reveal pre code { display: block; overflow: auto; word-wrap: normal; }
+.reveal ul, .reveal ol { display: block; text-align: left; }
+.reveal table { border-collapse: collapse; border-spacing: 0; }
+.reveal img { max-width: 100%; }
+
+/* ── Base ───────────────────────────────────────────────────── */
+html, body, .reveal-viewport { background: var(--bg); color-scheme: dark; }
+html.print-pdf .reveal .slides > section, html.print-pdf .pdf-page { background: var(--bg) !important; }
+
+.reveal { font-feature-settings: "tnum"; }
+.reveal ::selection { background: var(--accent); color: #111; }
+.reveal strong { color: var(--r-heading-color); font-weight: 700; }
+.reveal em { color: inherit; }
+.reveal a { text-decoration: none; }
+.reveal a:hover { text-decoration: underline; }
+.reveal p { margin: 0 0 12px; line-height: 1.4; }
+.reveal ul, .reveal ol { margin: 0 0 12px 1.1em; line-height: 1.4; }
+.reveal li + li { margin-top: 8px; }
+.reveal li::marker { color: var(--accent); }
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 { text-wrap: balance; }
+.reveal .muted { color: var(--muted); }
+.reveal .faint { color: var(--faint); }
+.reveal .accent { color: var(--accent); }
+.reveal .good { color: var(--good); }
+.reveal .bad { color: var(--bad); }
+.reveal .info { color: var(--info); }
+.reveal .mono { font-family: var(--r-code-font); }
+.reveal .nowrap { white-space: nowrap; }
+.reveal .small { font-size: 0.62em; color: var(--muted); }
+.reveal .center { text-align: center; }
+
+/* Inline code */
+.reveal :not(pre) > code {
+  font-family: var(--r-code-font);
+  font-size: 0.86em;
+  padding: 0.06em 0.32em;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ── Slide layout ───────────────────────────────────────────── */
+/* The title always sits at the same spot; the body is centered in the
+   space between the title and the footnote. */
+.reveal .slides { text-align: left; }
+.reveal .slides > section > section,
+.reveal .slides > section:not(.stack) {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 64px 72px 52px;
+  flex-direction: column;
+  gap: 0;
+}
+.reveal .slides > section > section:not(.statement) > :is(h2, .lead) + :not(h2, .lead, aside) { margin-top: auto; }
+.reveal .slides > section > section:not(.statement) > :nth-last-child(1 of :not(aside, .source, .kicker)) { margin-bottom: auto; }
+
+/* Chapter kicker (injected by js/deck.js) */
+.reveal .kicker {
+  position: absolute;
+  top: 26px;
+  left: 72px;
+  font-size: 0.46em;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.reveal .kicker b { color: var(--accent); font-weight: 750; margin-right: 0.6em; }
+
+.reveal h2 { margin-bottom: 12px; }
+.reveal .lead { font-size: 0.8em; color: var(--muted); margin: 0 0 12px; }
+
+/* Source / hardware footnote pinned to the bottom */
+.reveal .source {
+  position: absolute;
+  left: 72px;
+  right: 120px;
+  bottom: 20px;
+  font-size: 0.46em;
+  color: var(--faint);
+  margin: 0;
+}
+
+/* Push content to the bottom of the slide */
+.reveal .push { margin-top: auto; }
+
+/* Centered "statement" slides (title, chapter openers, quotes) */
+.reveal .slides section.statement {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.reveal .statement h2 { font-size: 2em; }
+.reveal .statement .lead { margin: 0 auto; max-width: 900px; }
+
+/* Chapter opener */
+.reveal .chapter-num {
+  font-size: 0.6em;
+  font-weight: 750;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+/* ── Title slide ────────────────────────────────────────────── */
+.reveal .title-slide h1 {
+  font-size: 2.3em;
+  line-height: 1.05;
+  margin-bottom: 14px;
+}
+.reveal .title-slide h1 span { color: var(--accent); }
+.reveal .title-slide .event {
+  font-size: 0.62em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 36px;
+}
+.reveal .speaker-card {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 36px;
+  text-align: left;
+}
+.reveal .speaker-photo {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  object-fit: cover;
+  margin: 0;
+}
+.reveal .speaker-name { font-size: 0.95em; font-weight: 700; color: var(--r-heading-color); }
+.reveal .speaker-roles { font-size: 0.6em; color: var(--muted); margin-top: 4px; }
+.reveal .speaker-links { font-size: 0.55em; margin-top: 6px; color: var(--muted); }
+
+/* ── Layout helpers ─────────────────────────────────────────── */
+.reveal .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.reveal .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.reveal .cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.reveal .cols-2-1 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 28px; align-items: start; }
+.reveal .cols-1-2 { display: grid; grid-template-columns: 1fr 1.6fr; gap: 28px; align-items: start; }
+.reveal .stack-v { display: flex; flex-direction: column; gap: 14px; }
+.reveal .col-label {
+  font-size: 0.56em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+.reveal .card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--faint);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.66em;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.reveal .card > :last-child { margin-bottom: 0; }
+.reveal .card h4, .reveal .card .card-title {
+  display: block;
+  font-size: 1.12em;
+  font-weight: 700;
+  color: var(--r-heading-color);
+  margin: 0 0 6px;
+}
+.reveal .card.good { border-left-color: var(--good); }
+.reveal .card.good .card-title { color: var(--good); }
+.reveal .card.bad { border-left-color: var(--bad); }
+.reveal .card.bad .card-title { color: var(--bad); }
+.reveal .card.info { border-left-color: var(--info); }
+.reveal .card.info .card-title { color: var(--info); }
+.reveal .card.warn { border-left-color: var(--accent); }
+.reveal .card.warn .card-title { color: var(--accent); }
+
+/* ── Callouts (key insight / warning) ───────────────────────── */
+.reveal .callout,
+.reveal .insight,
+.reveal .warning {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 18px;
+  margin: 14px 0 0;
+  font-size: 0.7em;
+  line-height: 1.45;
+  text-align: left;
+}
+.reveal .callout.bad, .reveal .warning { background: var(--bad-soft); border-left-color: var(--bad); }
+.reveal .callout.good { background: var(--good-soft); border-left-color: var(--good); }
+.reveal .callout.info { background: var(--info-soft); border-left-color: var(--info); }
+
+/* ── Big numbers ────────────────────────────────────────────── */
+.reveal .stats { display: flex; gap: 22px; }
+.reveal .stat {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.reveal .stat-value {
+  display: block;
+  font-size: 1.9em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--accent);
+}
+.reveal .stat.good .stat-value { color: var(--good); }
+.reveal .stat.bad .stat-value { color: var(--bad); }
+.reveal .stat.info .stat-value { color: var(--info); }
+.reveal .stat-label { display: block; font-size: 0.58em; color: var(--muted); margin-top: 8px; line-height: 1.35; }
+
+.reveal .hero-number {
+  font-size: 5.2em;
+  font-weight: 850;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  color: var(--accent);
+}
+
+/* ── Code ───────────────────────────────────────────────────── */
+.reveal pre {
+  width: 100%;
+  margin: 0 0 16px;
+  font-size: 0.66em;
+  box-shadow: var(--shadow);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--code-bg);
+}
+.reveal pre code {
+  padding: 14px 20px;
+  max-height: 560px;
+  line-height: 1.45;
+  border-radius: 10px;
+  background: var(--code-bg);
+}
+.reveal pre.dense { font-size: 0.54em; }
+.reveal pre.big { font-size: 0.8em; }
+.reveal .hljs { background: var(--code-bg); }
+.reveal .hljs-comment { color: #7b8490; font-style: normal; }
+/* Stepped line highlights: dim the rest a bit less than default */
+.reveal .hljs.has-highlights tr:not(.highlight-line) { opacity: 0.35; }
+
+/* ── Bar charts (rendered by js/deck.js) ────────────────────── */
+.reveal .chart {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  column-gap: 18px;
+  row-gap: 12px;
+  align-items: center;
+  font-size: 0.74em;
+  margin: 8px 0 16px;
+}
+.reveal .chart-title {
+  grid-column: 1 / -1;
+  font-size: 0.9em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.reveal .chart-row { display: contents; }
+.reveal .chart-label { color: var(--text); white-space: nowrap; }
+.reveal .chart-track {
+  position: relative;
+  height: 34px;
+  background: var(--surface);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.reveal .chart-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  min-width: 3px;
+  border-radius: 6px;
+  background: var(--faint);
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms;
+}
+.reveal .chart-row.good .chart-bar { background: var(--good); }
+.reveal .chart-row.bad .chart-bar { background: var(--bad); }
+.reveal .chart-row.info .chart-bar { background: var(--info); }
+.reveal .chart-row.warn .chart-bar { background: var(--accent); }
+.reveal .chart-value {
+  font-family: var(--r-code-font);
+  font-size: 0.92em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.reveal .chart-value .note { color: var(--good); font-weight: 700; margin-left: 10px; font-family: var(--r-main-font); }
+.reveal .chart-row.bad .chart-value .note { color: var(--bad); }
+.reveal section.present .chart-bar,
+.reveal.overview .chart-bar,
+html.print-pdf .reveal .chart-bar,
+html.reveal-print .reveal .chart-bar { width: var(--w); }
+html.print-pdf .reveal .chart-bar,
+html.reveal-print .reveal .chart-bar { transition: none; }
+/* Bars that are fragments grow when revealed */
+.reveal .chart-row.fragment { opacity: 1; visibility: visible; }
+.reveal .chart-row.fragment .chart-bar { width: 0 !important; }
+.reveal .chart-row.fragment.visible .chart-bar { width: var(--w) !important; }
+.reveal .chart-row.fragment .chart-value { opacity: 0; transition: opacity 300ms 700ms; }
+.reveal .chart-row.fragment.visible .chart-value { opacity: 1; }
+
+/* ── Tables ─────────────────────────────────────────────────── */
+.reveal table.benchmark, .reveal table.data {
+  font-size: 0.58em;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  width: 100%;
+}
+.reveal table.benchmark th, .reveal table.data th {
+  text-align: left;
+  font-weight: 650;
+  color: var(--muted);
+  border-bottom: 2px solid var(--line);
+  padding: 7px 12px;
+}
+.reveal table.benchmark td, .reveal table.data td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.reveal table .speedup, .reveal table .win { color: var(--good); font-weight: 700; }
+.reveal table .loss { color: var(--bad); font-weight: 700; }
+.reveal table td.num, .reveal table th.num { text-align: right; }
+
+/* ── Pipelines / flow diagrams ──────────────────────────────── */
+.reveal .flow { display: flex; align-items: stretch; gap: 10px; font-size: 0.62em; }
+.reveal .flow .step {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--muted);
+}
+.reveal .flow .step b { display: block; color: var(--r-heading-color); margin-bottom: 4px; font-size: 1.05em; }
+.reveal .flow .arrow { align-self: center; color: var(--faint); font-size: 1.4em; }
+
+/* Mental-model cost map */
+.reveal .costmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.reveal .costmap .cost {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 0.6em;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.reveal .costmap .cost b { display: block; font-size: 1.15em; color: var(--r-heading-color); margin-bottom: 4px; }
+.reveal .costmap .cost .ch { float: right; font-size: 0.85em; font-weight: 750; color: var(--accent); }
+
+/* Timeline / event loop strips */
+.reveal .strip { display: flex; gap: 3px; height: 34px; border-radius: 6px; overflow: hidden; margin: 6px 0 12px; }
+.reveal .strip > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5em;
+  font-weight: 700;
+  color: #111;
+}
+.reveal .strip-label { font-size: 0.55em; color: var(--muted); }
+
+/* Memory cells (GC / pools / swap-remove) */
+.reveal .cells { display: flex; gap: 3px; align-items: center; }
+.reveal .cells .c {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 6px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.6em;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+}
+.reveal .cells .c.dead { color: var(--faint); border-style: dashed; }
+.reveal .cells .c.live { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.reveal .cells .c.hot { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.reveal .cells .c.moved { background: var(--info-soft); border-color: var(--info); color: var(--info); }
+.reveal .cells .sep { color: var(--faint); font-size: 0.6em; margin: 0 10px; }
+
+/* Priority share bars (scheduler) */
+.reveal .share { display: grid; grid-template-columns: 90px 1fr 60px; gap: 6px 12px; align-items: center; font-size: 0.56em; }
+.reveal .share .lbl { text-align: right; color: var(--muted); font-weight: 650; }
+.reveal .share .bar { height: 16px; border-radius: 4px; background: var(--accent); }
+.reveal .share .pct { color: var(--faint); font-family: var(--r-code-font); }
+
+/* npm badge */
+.reveal .npm-badge {
+  display: inline-block;
+  background: #cb3837;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.58em;
+  font-weight: 650;
+  font-family: var(--r-code-font);
+  vertical-align: middle;
+}
+
+/* Quote slides */
+.reveal .quote { font-size: 1.7em; font-weight: 700; font-style: italic; color: var(--accent); line-height: 1.2; }
+.reveal .quote-by { font-size: 0.66em; color: var(--faint); margin-top: 14px; }
+
+/* ── Legacy components kept for appendix slides ─────────────── */
+.reveal .diagram-box {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 0.64em;
+}
+.reveal .diagram-box .diagram-title { text-align: center; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
+.reveal .diagram-box .diagram-row { display: flex; gap: 18px; justify-content: center; }
+.reveal .diagram-box .diagram-cell { flex: 1; border: 2px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 0; }
+.reveal .diagram-box .diagram-cell h4 { margin: 0 0 4px; font-size: 1em; color: var(--accent); }
+.reveal .diagram-box .diagram-cell .subtitle { color: var(--faint); font-size: 0.85em; margin-bottom: 8px; }
+.reveal .diagram-box .diagram-cell ul { list-style: none; padding: 0; margin: 0; }
+.reveal .diagram-box .diagram-cell ul li { color: var(--muted); font-size: 0.92em; margin: 2px 0; }
+.reveal .diagram-box .diagram-cell.good { border-color: var(--good); }
+.reveal .diagram-box .diagram-cell.good h4 { color: var(--good); }
+.reveal .diagram-box .diagram-cell.bad { border-color: var(--bad); }
+.reveal .diagram-box .diagram-cell.bad h4 { color: var(--bad); }
+.reveal .diagram-box .timeline { display: flex; align-items: center; gap: 3px; margin: 4px 0; font-size: 0.85em; }
+.reveal .diagram-box .timeline .label { width: 84px; color: var(--faint); flex-shrink: 0; text-align: right; padding-right: 8px; }
+.reveal .diagram-box .timeline .bar { height: 16px; border-radius: 3px; }
+.reveal .diagram-box .timeline .bar.work { background: var(--accent); }
+.reveal .diagram-box .timeline .bar.idle { background: var(--line); }
+.reveal .diagram-box .cache-core { text-align: center; border: 2px solid var(--line); border-radius: 8px; padding: 8px 12px; min-width: 80px; }
+.reveal .diagram-box .cache-core .core-label { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.reveal .diagram-box .cache-line { font-size: 0.85em; color: var(--muted); padding: 1px 0; }
+.reveal .diagram-box .shared-bus { border-top: 2px solid var(--accent); margin-top: 8px; padding-top: 6px; text-align: center; color: var(--accent); font-size: 0.85em; }
+.reveal .diagram-box .ring-segment { border: 2px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+.reveal .diagram-box .ring-segment .ring-title { color: var(--accent); font-weight: 700; margin-bottom: 8px; font-size: 0.95em; }
+.reveal .diagram-box .ring-cells { display: flex; margin: 8px 0; }
+.reveal .diagram-box .ring-cells .cell { border: 1px solid var(--line); padding: 6px 8px; text-align: center; font-size: 0.8em; color: var(--muted); }
+.reveal .diagram-box .ring-cells .cell.len { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.reveal .diagram-box .ring-cells .cell.data { background: var(--accent-soft); flex: 1; }
+.reveal .diagram-box .ring-pointers { display: flex; justify-content: space-between; font-size: 0.8em; color: var(--faint); margin-top: 4px; padding: 0 4px; }
+.reveal .diagram-box .ring-note { font-size: 0.85em; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+
+/* ── Fragments ──────────────────────────────────────────────── */
+.reveal .fragment.fade-up { transform: translate(0, 16px); }
+.reveal .fragment.fade-up.visible { transform: none; }
+.reveal .fragment.pop { transform: scale(0.85); opacity: 0; transition: all 350ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.reveal .fragment.pop.visible { transform: none; opacity: 1; }
+
+/* Progress bar + slide number */
+.reveal .progress { height: 4px; color: var(--accent); background: transparent; }
+.reveal .slide-number {
+  background: transparent;
+  color: var(--faint);
+  font-family: var(--r-main-font);
+  font-size: 13px;
+  right: 18px;
+  bottom: 12px;
+}
+
+/* Print / PDF */
+html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
+
+/* Takeaways list */
+.reveal ol.takeaways { font-size: 0.74em; margin-left: 1.2em; }
+.reveal ol.takeaways li + li { margin-top: 12px; }
+.reveal ol.takeaways li::marker { font-weight: 800; }
+.reveal .chart-row.pending .chart-value { color: var(--faint); font-style: italic; }
+
+/* Chapter openers (class="section-header") */
+.reveal .section-header h2 { font-size: 2.3em; margin-bottom: 18px; }
+.reveal .section-header > p { font-size: 0.9em; color: var(--muted); max-width: 980px; margin: 0 auto; }
+.reveal .section-header .chapter-num { font-size: 0.7em; }
+.reveal .section-header .npm-badge { font-size: 0.7em; }
+
+/* Grid children may shrink below their content width (code fits instead of overflowing) */
+.reveal :is(.cols, .cols-3, .cols-4, .cols-2-1, .cols-1-2, .costmap) > * { min-width: 0; }
+.reveal :is(.cols, .cols-2-1, .cols-1-2) pre { font-size: 0.54em; }
+
+.reveal table.dense-table { font-size: 0.5em; }
+.reveal table.dense-table td, .reveal table.dense-table th { padding: 6px 10px; }

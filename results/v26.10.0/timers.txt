@@ -1,0 +1,37 @@
+clk: ~4.32 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• schedule + cancel one 5 s timer
+------------------------------------------- -------------------------------
+native setTimeout            933.67 ns/iter   1.01 µs    ▃▄██▆▄▄▂▃         
+                      (682.88 ns … 1.57 µs)   1.36 µs ▄▅▅█████████▅▂▂▃▂▃▂▂▂
+                  gc(  2.23 ms …   4.36 ms) 357.95  b (272.86  b…512.28  b)
+
+pooled setTimeout             55.06 ns/iter  51.20 ns █                    
+                     (49.02 ns … 264.84 ns) 178.40 ns █▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.23 ms …   9.48 ms)  93.29  b ( 90.76  b…223.12  b)
+
+summary
+  pooled setTimeout
+   16.96x faster than native setTimeout
+
+• schedule 100 × 5 s timers, then cancel them
+------------------------------------------- -------------------------------
+native setTimeout              5.46 µs/iter   5.52 µs ▂█          ▄        
+                        (5.38 µs … 5.67 µs)   5.61 µs ██▄▆▁▁▁▁▁▁▁▅█▇▄▁▁▁▁▁▂
+                  gc(  2.36 ms …   5.40 ms)   7.67 kb (616.80  b…  7.81 kb)
+
+pooled setTimeout              5.40 µs/iter   5.45 µs  ▃█▃        ▆█▆      
+                        (5.30 µs … 5.54 µs)   5.52 µs ████▄▄▆▄▁▁▁▁███▆▆▁█▁▄
+                  gc(  2.35 ms …   5.21 ms) 838.86  b (774.58  b…884.98  b)
+
+summary
+  pooled setTimeout
+   1.01x faster than native setTimeout
+
+retained heap per live timer (100k timers)
+  native setTimeout   128.3 B
+  pooled setTimeout   73.0 B
