@@ -1,5 +1,5 @@
 // Render every slide in headless Chrome, screenshot it, and report layout
-// problems (content outside the 1280×720 canvas, scrolling code blocks,
+// problems (content outside the 1280×720 canvas, overlapping blocks, scrolling code blocks,
 // unfilled chart values).
 // Usage: npm start & node scripts/check-slides.mjs [outDir]
 //        ONLY='<title regex>' renders just the matching slides
@@ -91,6 +91,18 @@ try {
         if (bottom > 721 || right > 1281) {
           issues.push('overflow ' + el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : '') +
             ' bottom=' + Math.round(bottom) + ' right=' + Math.round(right))
+        }
+      }
+      // top-level blocks that overlap each other (e.g. a long note running into the pinned source line)
+      const name = (el) => el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : '')
+      const blocks = [...slide.children].filter((el) => !el.matches('aside, .kicker') && el.getBoundingClientRect().height > 0)
+      for (let i = 0; i < blocks.length; i++) {
+        for (let j = i + 1; j < blocks.length; j++) {
+          const a = blocks[i].getBoundingClientRect()
+          const b = blocks[j].getBoundingClientRect()
+          const dx = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+          const dy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+          if (dx > 2 && dy > 2) issues.push('overlap ' + name(blocks[i]) + ' / ' + name(blocks[j]) + ' by ' + Math.round(dy / scale) + 'px')
         }
       }
       for (const code of slide.querySelectorAll('pre code')) {
