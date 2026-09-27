@@ -23,7 +23,7 @@ byId.get(42)                                                   // no Promise, no
 
   <section data-core>
     <h2>Choose your durability deliberately</h2>
-    <div class="chart" data-unit="µs" data-scale="log" data-title="INSERT one 256 B row">
+    <div class="chart" data-unit="µs" data-scale="log" data-title="INSERT one 256 B row, one writer (many Workers: next slide)">
       <div class="bad" data-value="215.7">default: rollback journal, synchronous=FULL</div>
       <div data-value="25.9" data-note="8×">journal_mode=WAL, synchronous=FULL</div>
       <div class="good" data-value="11.5" data-note="19×">journal_mode=WAL, synchronous=NORMAL</div>
