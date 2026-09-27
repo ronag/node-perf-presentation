@@ -98,7 +98,20 @@ docker run --rm --cpuset-cpus=4 -v $PWD:/bench -w /bench node:26.10.0 node scrip
 - `sqlite-*.mjs` should run on a real disk: `BENCH_DIR=/data` with a Docker volume, not tmpfs.
 - `timers`, `cross-thread` and `slice` need the private `@nxtedition/*` packages, and `url.mjs` optionally uses `request-target`.
 
-### Custom Node builds (chapter 01)
+### Custom Node builds (the "Build your own Node" chapter)
 
-The builds come from `docker/swarm/base/node` in nxtedition/nxt: Clang 23, full LTO, `-march=x86-64-v3 -mtune=znver3`, two-pass IR PGO trained on 12 service workloads, optional `--experimental-enable-pointer-compression`, and mimalloc.
-The A/B variants in the slides (`baseline`, `+march`) are that same Dockerfile with PGO disabled and the target flags overridden. Everything was built and measured on tv2k-srv4 with the nxt benchmark workloads (`benchmark/workloads.mjs`); raw output is in `results/node-builds/`.
+Every step was built from the same Node 26.10.0 source and measured on tv2k-srv4 with the nxt benchmark workloads (`benchmark/workloads.mjs` in `docker/swarm/base/node` of nxtedition/nxt). That's 14 groups: Buffer, JSON, HTTP, Workers + reusePort, startup, allocation and GC. Images were run in interleaved order, 4 runs plus a warm-up, on pinned cores. Raw output is in `results/node-builds/`.
+
+| Step | Image | What changes |
+|---|---|---|
+| official | `node:26.10.0-trixie-slim` | Clang 20.1, no LTO, glibc malloc |
+| 1 · allocator | the same + `LD_PRELOAD=libmimalloc.so`, `MIMALLOC_PURGE_DELAY=1000` | allocator only |
+| 2 · Clang 23 | built with Clang 23, no LTO, no V8 patch | compiler |
+| 3 · LTO | + `--enable-lto` | link-time optimization |
+| 4 · `-march` | + `-march=x86-64-v3 -mtune=znver3` via a compiler wrapper | ISA target |
+| 5 · PGO | + two-pass Clang IR-PGO, 12 weighted training workloads | profile |
+| 6 · pointer compression | + `--experimental-enable-pointer-compression` | heap pointer width |
+| 7 · V8 patch | `ArrayBufferView::CopyArrayBufferViewBytes` (nodejs/node#63892) | measured on the Clang 23 build, patch off vs on |
+
+Steps 3–6 carry the V8 patch on both sides of each comparison, so each delta is that one step's effect.
+The A/B variants come from the production Dockerfile with four build args added: `NODE_TARGET_FLAGS`, `PGO`, `LTO` and `V8_PATCH`.

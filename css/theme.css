@@ -569,3 +569,18 @@ html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
 
 .reveal table.dense-table { font-size: 0.5em; }
 .reveal table.dense-table td, .reveal table.dense-table th { padding: 6px 10px; }
+
+/* polish */
+.reveal .chapter-num { letter-spacing: 0.04em; }
+.reveal .stat-value { font-size: 1.55em; white-space: nowrap; }
+.reveal .chart + .stats, .reveal .chart + .cols { margin-top: 10px; }
+.reveal .stats + p, .reveal .stats + .callout { margin-top: 14px; }
+.reveal p.muted { font-size: 0.74em; }
+.reveal .flow.steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.reveal .flow.steps-grid .step b { white-space: nowrap; }
+.reveal pre { margin-bottom: 22px; }
+.reveal :is(.cols, .cols-3, .cols-4, .stack-v, .cells, .chart, .flow) + :is(p, .callout) { margin-top: 16px; }
+.reveal :is(.cols, .cols-3, .cols-4) + .chart { margin-top: 16px; }
+.reveal table.data { font-size: 0.64em; }
+.reveal .share { font-size: 0.7em; grid-template-columns: 110px 1fr 80px; row-gap: 10px; }
+.reveal .share .bar { height: 22px; }
