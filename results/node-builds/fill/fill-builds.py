@@ -140,12 +140,12 @@ def within(g):
     return 'On its own: <strong>within noise</strong> on these workloads.' if abs(g) < 0.01 else f'On its own: <strong>{pct(g, 1)}</strong> geomean.'
 s = s.replace('B_LTO_TEXT', within(geo('c20', 'lto')[0]))
 gz = find('gzip level 1')
+gather_text = ''
 if med(gz, 'gather'):   # the Clang 23 build without -mno-gather, measured for this note
-    c23_text = (f"<strong>We build with <code>-mno-gather</code>.</strong> Without it, Clang 23 turns zlib's CRC32 loop into AVX-512 gathers, slow on Zen: "
-                f"gzip {med(gz, 'clang23') / 1024:.2f} → {med(gz, 'gather') / 1024:.2f} GiB/s. Compiler upgrades can regress: benchmark every step.")
-else:
-    c23_text = within(geo('znver5', 'clang23')[0])
-s = s.replace('B_C23_TEXT', c23_text)
+    gather_text = (f"<strong>We build with <code>-mno-gather</code>.</strong> Without it, Clang 23 turns zlib's CRC32 loop into AVX-512 gathers, slow on Zen: "
+                   f"gzip {med(gz, 'clang23') / 1024:.2f} → {med(gz, 'gather') / 1024:.2f} GiB/s. Compiler upgrades can regress: benchmark every step.")
+s = s.replace('B_GATHER_TEXT', gather_text)
+s = s.replace('B_C23_TEXT', f"On its own: <strong>{pct(geo('znver5', 'clang23')[0], 1)}</strong> geomean. A newer compiler isn't automatically faster: measure it (see the gather note in step 3).")
 
 http, jp, rss = find('HTTP/1.1 loopback'), find('JSON.parse 0.5'), find('RSS for 2M')
 heap, alloc = find('Live heap at full GC'), find('Allocate 2M')
@@ -160,7 +160,7 @@ s = s.replace('B_PC_COST', ', '.join(f'{html.escape(n)} {pct(d)}' for d, n in lo
 churn = find('RSS after 512 MiB Buffer churn')
 s = s.replace('B_MIMALLOC_RSS', f'after 512 MiB of Buffer churn it keeps {med(churn, "omimalloc"):.0f} MiB resident vs {med(churn, "official"):.0f} MiB with glibc')
 
-COLS = [('+mimalloc', 'official', 'omimalloc'), ('own build', 'omimalloc', 'c20'), ('+LTO', 'c20', 'lto'),
+COLS = [('+mimalloc', 'official', 'omimalloc'), ('+LTO', 'c20', 'lto'),
         ('+znver5', 'lto', 'znver5'), ('Clang 23', 'znver5', 'clang23'), ('+PGO', 'clang23', 'pgo'),
         ('+ptr comp.', 'pgo', 'pc'), ('+V8 patch', 'pc', 'v8')]
 def cell(row, a, b):
