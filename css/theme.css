@@ -555,8 +555,9 @@ html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
 .reveal :is(.cols, .cols-3, .cols-4, .cols-2-1, .cols-1-2) > * { min-width: 0; }
 .reveal :is(.cols, .cols-2-1, .cols-1-2) pre { font-size: 0.54em; }
 
-.reveal table.dense-table { font-size: 0.5em; }
-.reveal table.dense-table td, .reveal table.dense-table th { padding: 6px 10px; }
+.reveal table.data.dense-table { font-size: 0.52em; }   /* beats the later table.data size */
+.reveal table.data.dense-table td, .reveal table.data.dense-table th { padding: 5px 9px; }
+.reveal table.data.dense-table th { white-space: nowrap; }
 
 /* polish */
 .reveal .chapter-num { letter-spacing: 0.04em; }

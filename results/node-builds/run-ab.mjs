@@ -31,13 +31,15 @@ const images = []
 for (const a of args) {
   const m = /^--([^=]+)=(.+)$/.exec(a)
   if (m) { options[m[1]] = ['runs', 'durationMs'].includes(m[1]) ? Number(m[2]) : m[2]; continue }
-  // label=image[+fast|+glibc]: +fast = mimalloc with a 1 s purge delay, +glibc = no LD_PRELOAD
+  // label=image[+fast|+glibc|+tune]: +fast = mimalloc with a 1 s purge delay, +glibc = no LD_PRELOAD,
+  // +tune = Step 0 of the talk (semi-space 64 MiB, Buffer.poolSize 1 MiB, 16 libuv threads)
   const [label, ref] = a.split('=')
   // +mimalloc: preload a host copy of the image's mimalloc into any image (e.g. the official one)
-  const m2 = /^(.*?)(\+fast|\+glibc|\+mimalloc)?$/.exec(ref)
+  const m2 = /^(.*?)(\+fast|\+glibc|\+mimalloc|\+tune)?$/.exec(ref)
   const env = m2[2] === '+fast' ? ['MIMALLOC_PURGE_DELAY=1000']
     : m2[2] === '+glibc' ? ['LD_PRELOAD=']
-    : m2[2] === '+mimalloc' ? ['LD_PRELOAD=/opt/libmimalloc.so', 'MIMALLOC_PURGE_DELAY=1000'] : []
+    : m2[2] === '+mimalloc' ? ['LD_PRELOAD=/opt/libmimalloc.so', 'MIMALLOC_PURGE_DELAY=1000']
+    : m2[2] === '+tune' ? ['NODE_OPTIONS=--max-semi-space-size=64 --import=data:text/javascript,Buffer.poolSize=1048576', 'UV_THREADPOOL_SIZE=16'] : []
   const mounts = m2[2] === '+mimalloc' ? ['/root/node-ab-libs/libmimalloc.so:/opt/libmimalloc.so:ro'] : []
   images.push({ label, image: m2[1], allocator: 'image', environment: env, mounts })
 }
