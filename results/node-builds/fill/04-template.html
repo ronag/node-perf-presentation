@@ -8,20 +8,15 @@
   <section data-core>
     <h2>The official binary runs on every x86 CPU since 2003</h2>
     <p class="lead">Great for compatibility. It leaves speed and memory on the table. Tune what you have, then rebuild. Every step benchmarked on its own:</p>
-    <div class="flow steps-grid">
-      <div class="step fragment fade-up"><b>0 · Tune</b>flags and env</div>
-      <div class="step fragment fade-up"><b>1 · Allocator</b>mimalloc, no rebuild</div>
-      <div class="step fragment fade-up"><b>2 · LTO</b>whole program</div>
-      <div class="step fragment fade-up"><b>3 · -march</b>Zen 5: AVX-512</div>
-      <div class="step fragment fade-up"><b>4 · Clang 23</b>a newer compiler</div>
-      <div class="step fragment fade-up"><b>5 · PGO</b>our workloads</div>
-      <div class="step fragment fade-up"><b>6 · Pointer compr.</b>32-bit pointers</div>
-      <div class="step fragment fade-up"><b>7 · Patch V8</b>your own runtime</div>
-    </div>
-    <div class="stats fragment fade-up" style="margin-top:26px">
-      <div class="stat good"><span class="stat-value">B_TOTAL_HTTP</span><span class="stat-label">HTTP req/s, official → all steps</span></div>
-      <div class="stat good"><span class="stat-value">B_TOTAL_JSON</span><span class="stat-label">JSON.parse throughput</span></div>
-      <div class="stat good"><span class="stat-value">B_TOTAL_RSS</span><span class="stat-label">RSS for 2M live objects</span></div>
+    <div class="flow steps-grid fragment fade-up">
+      <div class="step"><b>0 · Tune</b>flags and env</div>
+      <div class="step"><b>1 · Allocator</b>mimalloc, no rebuild</div>
+      <div class="step"><b>2 · LTO</b>whole program</div>
+      <div class="step"><b>3 · -march</b>Zen 5: AVX-512</div>
+      <div class="step"><b>4 · Clang 23</b>a newer compiler</div>
+      <div class="step"><b>5 · PGO</b>our workloads</div>
+      <div class="step"><b>6 · Pointer compr.</b>32-bit pointers</div>
+      <div class="step"><b>7 · Patch V8</b>your own runtime</div>
     </div>
     <p class="source">Same Node 26.10.0 source for every build. Built and measured on an AMD EPYC 9355P (Zen 5): 14 workload groups, median of interleaved runs, pinned cores.</p>
   </section>
