@@ -38,13 +38,13 @@ The deck has ~140 slides, far more than 30 minutes allow.
 |---|---|---|
 | Title | 1 | 0:00–1:00 |
 | Build your own Node: official → 0 tune → 1 mimalloc → 2 LTO → 3 -march=znver5 → 4 Clang 23 → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 1:00–10:00 |
-| GC semi-space, async/await cost, async return pattern, sync I/O (12× / 190×) | 4 | 10:00–13:00 |
-| SQLite: prepare once, durability, contending writers, sharding | 4 | 13:00–15:30 |
-| Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool, ring buffer | 4 | 15:30–17:30 |
-| Bitmaps, Slice, `Buffer.poolSize` | 3 | 17:30–19:30 |
-| HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 3 | 19:30–21:30 |
-| URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:30–25:30 |
-| Flat queue, intrusive containers (last on purpose: cut first if late) | 2 | 25:30–27:00 |
+| GC semi-space; HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 4 | 10:00–12:30 |
+| async/await cost, async return pattern, sync I/O (12× / 190×) | 3 | 12:30–14:30 |
+| SQLite: prepare once, durability, contending writers, sharding | 4 | 14:30–17:00 |
+| Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool, ring buffer | 4 | 17:00–19:00 |
+| Bitmaps, Slice, `Buffer.poolSize` | 3 | 19:00–21:00 |
+| URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:00–25:00 |
+| Flat queue, intrusive containers (last on purpose: cut first if late) | 2 | 25:00–26:30 |
 | Thank you | 1 | 27:00 |
 
 ### PDF
