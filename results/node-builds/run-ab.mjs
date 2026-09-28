@@ -166,7 +166,8 @@ const rows = first[0].metrics.map((metric, k) => {
   for (const { label } of images) {
     const vals = results.get(label).map((r) => r.metrics[k].value)
     const med = median(vals)
-    row.values[label] = { median: med, mad: median(vals.map((v) => Math.abs(v - med))) }
+    // keep the raw per-run samples, so noise can be judged later (bootstrap CIs)
+    row.values[label] = { median: med, mad: median(vals.map((v) => Math.abs(v - med))), samples: vals }
   }
   return row
 })
