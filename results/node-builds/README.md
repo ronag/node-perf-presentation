@@ -30,7 +30,7 @@ Images (all Node v26.10.0, built on tv2k-srv4, an AMD EPYC 9355P, Zen 5). Each a
 `-mno-gather`: Clang 23 turns zlib's CRC32 loop into AVX-512 gathers that are slow on Zen (see `clang23-gather/`).
 Every custom image runs mimalloc with `MIMALLOC_PURGE_DELAY=1000`.
 
-How the slides filter noise: a step's row is shown only if the 95% bootstrap CI of its delta (from the raw per-run samples) excludes 0 and |delta| ≥ 1%. For the three PGO-trained steps (PGO, pointer compression, V8 patch), it must also reproduce with the same sign in `ab9-znver5.md`, whose images had their own PGO trainings: one training run can swing JSON.parse by ±15% (the final run's pointer-compression image parsed 16% slower, its V8-patch image 13% faster).
+How the slides filter noise: a step's row is shown only if the 95% bootstrap CI of its delta (from the raw per-run samples) excludes 0 and |delta| ≥ 2%. For the three PGO-trained steps (PGO, pointer compression, V8 patch), it must also reproduce with the same sign in `ab9-znver5.md`, whose images had their own PGO trainings: one training run can swing JSON.parse by ±15% (the final run's pointer-compression image parsed 16% slower, its V8-patch image 13% faster).
 
 Checked before benchmarking: `process.config` reports the compiler, LTO and pointer compression each image should have, and the znver5 images carry about twice as many AVX-512 (`zmm`) instructions (171K vs 81K from runtime-dispatched code).
 

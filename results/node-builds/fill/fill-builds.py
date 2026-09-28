@@ -37,8 +37,8 @@ def delta(row, a, b):
 import random
 _rng = random.Random(42)
 _sig_cache = {}
-def significant(row, a, b, floor=0.01):
-    """True when the 95% bootstrap CI of the step's delta excludes 0 and |delta| >= floor."""
+def significant(row, a, b, floor=0.0195):
+    """True when the 95% bootstrap CI of the step's delta excludes 0 and |delta| rounds to at least 2%."""
     d = delta(row, a, b)
     if d is None or abs(d) < floor:
         return False
@@ -168,8 +168,10 @@ def cell(row, a, b):
     d = delta(row, a, b)
     if d is None or abs(d) > 5:
         return '<td class="num">n/a</td>'
+    if round(abs(d) * 100) < 3:
+        return f'<td class="num noise">{pct(d)}</td>'    # small: always grey
     if not significant(row, a, b):
-        return f'<td class="num noise">{pct(d)}</td>'   # the real value, greyed: within noise
+        return f'<td class="num noise">({pct(d)})</td>'   # big but within noise (or not reproduced)
     return f'<td class="num {"win" if d > 0 else "loss"}">{pct(d)}</td>'
 TABLE_ROWS = SHOW + [('Buffer.swap16', 'Buffer.swap16 8 KiB'), ('Buffer.copy 64 B', 'Buffer.copy 64 B'), ('RSS for 2M', 'RSS saved, 2M-object graph'),
                      ('Live heap at full GC', 'live heap saved, 1M records'), ('Full GC pause', 'full GC pause, 1M records')]
@@ -180,13 +182,10 @@ def tune_cell(sub):
     return (cell(hits[0], 'official', 'tune') if hits else '<td class="num">n/a</td>').replace('<td class="num', '<td class="sepr num', 1)
 trs = [f'<tr><td>{html.escape(label)}</td>' + tune_cell(sub) + ''.join(cell(find(sub), a, b) for _, a, b in COLS) + cell(find(sub), 'official', 'v8') + '</tr>'
        for sub, label in TABLE_ROWS]
-if TUNE is not None:
-    # Step 0's thread-pool effect: none of the A/B workloads use the libuv pool (benchmarks/uv-threadpool.mjs)
-    trs.append('<tr><td>async crypto, libuv thread pool</td><td class="sepr num win">+202%</td>' + '<td class="num noise">–</td>' * (len(COLS) + 1) + '</tr>')
 table = ('<table class="data dense-table"><thead><tr><th></th>' + ('<th class="sepr num">+tune</th>' if TUNE else '') + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
          '<th class="num">total</th></tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
 s = s.replace('B_TABLE', table)
-s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary in a separate A/B, not part of the total; thread-pool crypto from uv-threadpool.mjs' if TUNE else '')
+s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary in a separate A/B, not part of the total' if TUNE else '')
 
 left = re.findall(r'\bB_[A-Z0-9_]+', s)
 print('left placeholders:', left)
