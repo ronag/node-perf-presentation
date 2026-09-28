@@ -160,7 +160,8 @@ s = s.replace('B_PC_COST', ', '.join(f'{html.escape(n)} {pct(d)}' for d, n in lo
 churn = find('RSS after 512 MiB Buffer churn')
 s = s.replace('B_MIMALLOC_RSS', f'after 512 MiB of Buffer churn it keeps {med(churn, "omimalloc"):.0f} MiB resident vs {med(churn, "official"):.0f} MiB with glibc')
 
-COLS = [('+mimalloc', 'official', 'omimalloc'), ('+LTO', 'c20', 'lto'),
+# The chain columns multiply exactly to the total: +LTO includes rebuilding with our toolchain (alone +0.1%)
+COLS = [('+mimalloc', 'official', 'omimalloc'), ('+LTO', 'omimalloc', 'lto'),
         ('+znver5', 'lto', 'znver5'), ('Clang 23', 'znver5', 'clang23'), ('+PGO', 'clang23', 'pgo'),
         ('+ptr comp.', 'pgo', 'pc'), ('+V8 patch', 'pc', 'v8')]
 def cell(row, a, b):
@@ -168,7 +169,7 @@ def cell(row, a, b):
     if d is None or abs(d) > 5:
         return '<td class="num">n/a</td>'
     if not significant(row, a, b):
-        return '<td class="num noise">≈0</td>'
+        return f'<td class="num noise">{pct(d)}</td>'   # the real value, greyed: within noise
     return f'<td class="num {"win" if d > 0 else "loss"}">{pct(d)}</td>'
 TABLE_ROWS = SHOW + [('Buffer.swap16', 'Buffer.swap16 8 KiB'), ('Buffer.copy 64 B', 'Buffer.copy 64 B'), ('RSS for 2M', 'RSS saved, 2M-object graph'),
                      ('Live heap at full GC', 'live heap saved, 1M records'), ('Full GC pause', 'full GC pause, 1M records')]
@@ -176,13 +177,17 @@ def tune_cell(sub):
     if TUNE is None:
         return ''
     hits = [r for n, r in TUNE.items() if sub.lower() in n.lower()]
-    return cell(hits[0], 'official', 'tune') if hits else '<td class="num">n/a</td>'
-trs = [f'<tr><td>{html.escape(label)}</td>' + tune_cell(sub) + ''.join(cell(find(sub), a, b) for _, a, b in COLS) + cell(find(sub), 'official', 'v8') + '</tr>'
+    return (cell(hits[0], 'official', 'tune') if hits else '<td class="num">n/a</td>').replace('<td class="num', '<td class="sep num', 1)
+trs = [f'<tr><td>{html.escape(label)}</td>' + ''.join(cell(find(sub), a, b) for _, a, b in COLS) + cell(find(sub), 'official', 'v8') + tune_cell(sub) + '</tr>'
        for sub, label in TABLE_ROWS]
-table = ('<table class="data dense-table"><thead><tr><th></th>' + ('<th class="num">+tune</th>' if TUNE else '') + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
-         '<th class="num">total</th></tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
+if TUNE is not None:
+    # Step 0's thread-pool effect: none of the A/B workloads use the libuv pool (benchmarks/uv-threadpool.mjs)
+    trs.append('<tr><td>async crypto, libuv thread pool</td>' + '<td class="num noise">–</td>' * (len(COLS) + 1) +
+               '<td class="sep num win">+202%</td></tr>')
+table = ('<table class="data dense-table"><thead><tr><th></th>' + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
+         '<th class="num">total</th>' + ('<th class="sep num">Step 0: tune</th>' if TUNE else '') + '</tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
 s = s.replace('B_TABLE', table)
-s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary, a separate A/B; the build columns run untuned' if TUNE else '')
+s = s.replace('B_TUNE_NOTE', ' · Step 0: tuning flags on the official binary in a separate A/B, not part of the total; thread-pool crypto from uv-threadpool.mjs' if TUNE else '')
 
 left = re.findall(r'\bB_[A-Z0-9_]+', s)
 print('left placeholders:', left)
