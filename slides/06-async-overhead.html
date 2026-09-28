@@ -26,22 +26,6 @@
   </section>
 
   <section>
-    <h2>Sync fast path</h2>
-    <pre class="big"><code class="language-javascript">function getFromCache (id) {
-  const cached = cache.get(id)
-  if (cached !== undefined) return cached   // no Promise, no microtask
-  return getFromCacheAsync(id)              // only go async when needed
-}
-
-async function getFromCacheAsync (id) {
-  const value = await db.get(id)
-  cache.set(id, value)
-  return value
-}</code></pre>
-    <p class="muted">Returns <code>value | Promise</code>. <code>await</code>ing it anyway still costs a microtask, so callers must check.</p>
-  </section>
-
-  <section>
     <h2>The async return pattern</h2>
     <pre class="big"><code class="language-javascript">// SOMETIMES async, but the caller always pays
 async function resolve (key) {
