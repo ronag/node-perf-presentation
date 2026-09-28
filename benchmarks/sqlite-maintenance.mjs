@@ -6,12 +6,15 @@
 // A 1 ms interval on the main thread records the longest gap between ticks.
 //
 // Run it on a real disk (not tmpfs), e.g. BENCH_DIR=/data with a docker volume.
-import { DatabaseSync } from 'node:sqlite'
+import * as sqlite from 'node:sqlite'
 import { Worker, isMainThread, workerData, parentPort } from 'node:worker_threads'
 import { setImmediate as yieldToLoop } from 'node:timers/promises'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+
+// node:sqlite renamed DatabaseSync to Database; Node 26.10 still has the old name
+const Database = sqlite.Database ?? sqlite.DatabaseSync
 
 const ROWS = 200_000
 const EXPIRED = 20_000
@@ -19,7 +22,7 @@ const BATCH = 500
 const NOW = 1_000_000
 
 function openDb (file) {
-  const db = new DatabaseSync(file, { timeout: 5000 })
+  const db = new Database(file, { timeout: 5000 })
   db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL')
   return db
 }

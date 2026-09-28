@@ -57,6 +57,6 @@ function maybeYield () {
   // null on the fast path; otherwise queue and drain in a batch via setImmediate
   return shouldYield() ? doYield() : null
 }</code></pre>
-    <p class="callout">Yielding lets you use sync APIs (<code>readFileSync</code>, <code>DatabaseSync</code>) on the main thread without starving the loop. Do real work, yield, repeat.</p>
+    <p class="callout">Yielding lets you use sync APIs (<code>readFileSync</code>, <code>Database</code>) on the main thread without starving the loop. Do real work, yield, repeat.</p>
   </section>
 </section>

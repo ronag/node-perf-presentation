@@ -6,18 +6,21 @@
 // journal_mode / synchronous combination.
 //
 // Run it on a real disk (not tmpfs), e.g. BENCH_DIR=/data with a docker volume.
-import { DatabaseSync } from 'node:sqlite'
+import * as sqlite from 'node:sqlite'
 import { Worker, isMainThread, workerData, parentPort } from 'node:worker_threads'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+
+// node:sqlite renamed DatabaseSync to Database; Node 26.10 still has the old name
+const Database = sqlite.Database ?? sqlite.DatabaseSync
 
 const DURATION_MS = Number(process.env.DURATION_MS ?? 3000)
 const BUSY_TIMEOUT_MS = 5000
 
 if (!isMainThread) {
   const { file, id, sync } = workerData
-  const db = new DatabaseSync(file, { timeout: BUSY_TIMEOUT_MS })
+  const db = new Database(file, { timeout: BUSY_TIMEOUT_MS })
   db.exec(`PRAGMA synchronous = ${sync}`)
   const insert = db.prepare('INSERT INTO kv (k, v) VALUES (?, ?)')
   const value = Buffer.alloc(256, id)
@@ -58,7 +61,7 @@ if (!isMainThread) {
   for (const [journal, sync, label] of configs) {
     for (const workers of WORKERS) {
       const file = path.join(DIR, `db-${fileNo++}.sqlite`)
-      const setup = new DatabaseSync(file)
+      const setup = new Database(file)
       setup.exec(`PRAGMA journal_mode = ${journal}; CREATE TABLE kv (k INTEGER PRIMARY KEY, v BLOB) WITHOUT ROWID`)
       setup.close()
 

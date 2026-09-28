@@ -6,10 +6,10 @@
   </section>
 
   <section data-core>
-    <h2><code>DatabaseSync</code>: prepare once, call synchronously</h2>
-    <pre><code class="language-javascript">import { DatabaseSync } from 'node:sqlite'
+    <h2><code>Database</code>: prepare once, call synchronously</h2>
+    <pre><code class="language-javascript">import { Database } from 'node:sqlite'
 
-const db = new DatabaseSync('cache.db', { timeout: 10 })
+const db = new Database('cache.db', { timeout: 10 })
 const byId = db.prepare('SELECT * FROM users WHERE id = ?')   // once
 byId.get(42)                                                   // no Promise, no thread pool</code></pre>
     <div class="chart" data-unit="µs" data-title="SELECT one row by primary key">
@@ -18,7 +18,7 @@ byId.get(42)                                                   // no Promise, no
       <div class="good" data-value="1.49" data-note="2.9×">db.createTagStore(): an LRU of statements</div>
       <div class="good" data-value="1.18" data-note="3.7×">reused + setReturnArrays(true)</div>
     </div>
-    <p class="source">benchmarks/sqlite-pragmas.mjs · SQLite 3.53 · EPYC 9355P · Node 26.10</p>
+    <p class="source">benchmarks/sqlite-pragmas.mjs · SQLite 3.53 · EPYC 9355P · Node 26.10, where it is still named <code>DatabaseSync</code></p>
   </section>
 
   <section data-core>
@@ -45,7 +45,7 @@ byId.get(42)                                                   // no Promise, no
     </div>
     <div class="cols">
       <div class="stat bad"><span class="stat-value">3.0–3.6 s</span><span class="stat-label">the slowest insert with 8 writers, in every journal mode (p99: under 0.1 ms)</span></div>
-      <div class="card warn"><span class="card-title">The busy handler sleeps</span>A waiting writer sleeps and retries until <code>timeout</code>. With <code>DatabaseSync</code>, that sleep blocks the calling thread.</div>
+      <div class="card warn"><span class="card-title">The busy handler sleeps</span>A waiting writer sleeps and retries until <code>timeout</code>. With the synchronous <code>Database</code>, that sleep blocks the calling thread.</div>
     </div>
     <p class="source">benchmarks/sqlite-contention.mjs · 3 s per case, busy timeout 5 s · NVMe RAID1 (Samsung PM9A3) · EPYC 9355P · Node 26.10</p>
     <aside class="notes">8 Workers vs 1 writer: rollback 5.0K → 4.2K (−18%), WAL+OFF 256K → 206K (−20%). Fix: funnel writes through one connection, or shard (next slide).</aside>
@@ -76,35 +76,5 @@ PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict
     </div>
     <p class="muted">Plus an advisory lock per shard in a <code>SharedArrayBuffer</code> (<code>Atomics.compareExchange</code>): a Worker that finds a shard busy defers its flush instead of hitting <code>SQLITE_BUSY</code>.</p>
     <p class="source">benchmarks/sqlite-cache-shards.mjs (<span class="npm-badge">@nxtedition/cache</span>) · EPYC 9355P, 12 pinned cores</p>
-  </section>
-
-  <section>
-    <h2>Keep maintenance off the event loop</h2>
-    <div class="chart" data-unit="ms" data-title="delete 20K expired of 200K rows, then checkpoint: the longest event-loop stall">
-      <div class="bad" data-value="152.5">main thread, one statement</div>
-      <div class="good" data-value="10.1" data-note="15×">① batches of 500, yield in between</div>
-      <div class="good" data-value="1.6" data-note="95×">② a Worker with its own connection</div>
-    </div>
-    <div class="cols">
-      <div>
-        <div class="col-label good">① Break it into batches and yield</div>
-        <pre><code class="language-javascript">import { setImmediate } from 'node:timers/promises'
-
-const del = db.prepare(`DELETE FROM cache WHERE k IN
-  (SELECT k FROM cache WHERE expires &lt; ? LIMIT 500)`)
-while (del.run(now).changes &gt; 0) {
-  await setImmediate()   // let I/O in
-}</code></pre>
-      </div>
-      <div>
-        <div class="col-label good">② Move it to a Worker</div>
-        <pre><code class="language-javascript">// maintenance.mjs runs in a Worker, own connection
-const db = new DatabaseSync('cache.db', { timeout: 1000 })
-db.prepare('DELETE FROM cache WHERE expires &lt; ?').run(now)
-db.exec('PRAGMA wal_checkpoint(TRUNCATE)')</code></pre>
-      </div>
-    </div>
-    <p class="muted">The total work stays about the same, 140–160 ms: it's spread out, not removed. Combine them: in WAL mode the Worker doesn't block readers, but it still holds the write lock, so batch there too.</p>
-    <p class="source">benchmarks/sqlite-maintenance.mjs · WAL, synchronous=NORMAL · median of 5 · NVMe RAID1 · EPYC 9355P · Node 26.10</p>
   </section>
 </section>

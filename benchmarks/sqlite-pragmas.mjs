@@ -3,11 +3,14 @@
 //
 // Run it on a real disk (not tmpfs), e.g. BENCH_DIR=/data with a docker volume:
 // fsync cost is the whole point of this benchmark.
-import { DatabaseSync } from 'node:sqlite'
+import * as sqlite from 'node:sqlite'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { run, bench, group, summary, do_not_optimize } from 'mitata'
+
+// node:sqlite renamed DatabaseSync to Database; Node 26.10 still has the old name
+const Database = sqlite.Database ?? sqlite.DatabaseSync
 
 const DIR = fs.mkdtempSync(path.join(process.env.BENCH_DIR ?? os.tmpdir(), 'sqlite-bench-'))
 const VALUE = Buffer.alloc(256, 7)
@@ -16,7 +19,7 @@ const TIME_MS = 2000
 let fileNo = 0
 function open(journal, sync) {
   const file = path.join(DIR, `db-${fileNo++}.sqlite`)
-  const db = new DatabaseSync(file)
+  const db = new Database(file)
   db.exec(`PRAGMA journal_mode = ${journal}; PRAGMA synchronous = ${sync};`)
   db.exec('CREATE TABLE kv (k INTEGER PRIMARY KEY, v BLOB) WITHOUT ROWID')
   return db
