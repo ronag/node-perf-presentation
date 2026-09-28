@@ -41,9 +41,9 @@ http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
   <section data-core>
     <h2>Measured: the win is memory</h2>
     <table class="data">
-      <thead><tr><th>4 cores, a small JSON response</th><th class="num">keep-alive</th><th class="num">new connection per request</th><th class="num">total RSS</th></tr></thead>
+      <thead><tr><th>4 cores, a small JSON response</th><th class="num">keep-alive, req/s</th><th class="num">new connection per request, req/s</th><th class="num">total RSS</th></tr></thead>
       <tbody>
-        <tr><td>one process, one thread</td><td class="num">123K req/s</td><td class="num">52K req/s</td><td class="num">149 MiB</td></tr>
+        <tr><td>one process, one thread</td><td class="num">123K</td><td class="num">52K</td><td class="num">149 MiB</td></tr>
         <tr><td>cluster (the primary round-robins)</td><td class="num">490K</td><td class="num loss">102K</td><td class="num loss">743 MiB</td></tr>
         <tr><td>cluster + <code>reusePort</code></td><td class="num">489K</td><td class="num win">117K</td><td class="num">666 MiB</td></tr>
         <tr><td>Workers + <code>reusePort</code>, one process</td><td class="num">487K</td><td class="num win">118K</td><td class="num win">421 MiB</td></tr>
