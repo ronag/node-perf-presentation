@@ -1,0 +1,11 @@
+sqlite 3.53.4, dir /data/sqlite-contention-UjsbSL, 3 s per case, busy timeout 5000 ms
+INSERT one 256 B row per autocommit statement, every Worker on its own connection to one file
+
+  default: rollback journal, synchronous=FULL   1 worker(s)      5049 rows/s  p50    189.7 µs  p99     290.7 µs  max     3.7 ms  busy errors 0
+  default: rollback journal, synchronous=FULL   8 worker(s)      4165 rows/s  p50    189.7 µs  p99     288.1 µs  max  3631.0 ms  busy errors 0
+  WAL, synchronous=FULL                         1 worker(s)     38904 rows/s  p50     20.6 µs  p99      73.8 µs  max     1.9 ms  busy errors 0
+  WAL, synchronous=FULL                         8 worker(s)     32274 rows/s  p50     21.0 µs  p99      80.1 µs  max  3130.6 ms  busy errors 0
+  WAL, synchronous=NORMAL                       1 worker(s)     91070 rows/s  p50      3.1 µs  p99      10.8 µs  max     4.4 ms  busy errors 0
+  WAL, synchronous=NORMAL                       8 worker(s)    118128 rows/s  p50      3.8 µs  p99      18.4 µs  max  3030.8 ms  busy errors 0
+  WAL, synchronous=OFF                          1 worker(s)    256229 rows/s  p50      3.0 µs  p99      10.1 µs  max     0.3 ms  busy errors 0
+  WAL, synchronous=OFF                          8 worker(s)    206058 rows/s  p50      3.2 µs  p99      11.4 µs  max  3030.3 ms  busy errors 0
