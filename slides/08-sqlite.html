@@ -71,7 +71,8 @@ PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict
 
   <section data-core>
     <h2>One writer per file: shard it</h2>
-    <pre><code class="language-javascript">const db = shards[hash(key) % shards.length]   // own file, own write lock</code></pre>
+    <pre><code class="language-javascript">const db = shards[hash(key) % shards.length]   // own file, own write lock
+// every shard: journal_mode=WAL, synchronous=OFF, writes batched per BEGIN IMMEDIATE</code></pre>
     <div class="chart" data-unit="ops/s" data-title="12 Worker threads, cold writes (a single thread: 125K ops/s)">
       <div class="bad" data-value="148000" data-display="148K">1 file: 1.18× a single thread</div>
       <div data-value="198000" data-display="198K" data-note="+34%">2 shards</div>
@@ -79,6 +80,6 @@ PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict
       <div class="good" data-value="256000" data-display="256K" data-note="+73%">8 shards</div>
     </div>
     <p class="muted">Plus an advisory lock per shard in a <code>SharedArrayBuffer</code> (<code>Atomics.compareExchange</code>): a Worker that finds a shard busy defers its flush instead of hitting <code>SQLITE_BUSY</code>.</p>
-    <p class="source">benchmarks/sqlite-cache-shards.mjs (<span class="npm-badge">@nxtedition/cache</span>) · EPYC 9355P, 12 pinned cores</p>
+    <p class="source">benchmarks/sqlite-cache-shards.mjs (<span class="npm-badge">@nxtedition/cache</span>) · busy timeout 10 ms · EPYC 9355P, 12 pinned cores</p>
   </section>
 </section>
