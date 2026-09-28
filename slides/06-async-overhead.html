@@ -26,21 +26,6 @@
   </section>
 
   <section>
-    <h2>The cost chain</h2>
-    <pre><code class="language-javascript">async function getUser (id) {              // Promise #1
-  const row = await queryDb(id)             // suspend + resume
-  return formatUser(row)
-}
-async function queryDb (id) {               // Promise #2
-  const conn = await pool.acquire()         // Promise #3, suspend + resume
-  try {
-    return await conn.query('…', [id])      // Promise #4, suspend + resume
-  } finally { pool.release(conn) }
-}</code></pre>
-    <p class="callout">One “simple” query: 4 promises and 3 microtask hops, even when every layer could have answered immediately.</p>
-  </section>
-
-  <section>
     <h2>Sync fast path</h2>
     <pre class="big"><code class="language-javascript">function getFromCache (id) {
   const cached = cache.get(id)
