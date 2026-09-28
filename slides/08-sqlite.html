@@ -36,23 +36,23 @@ byId.get(42)                                                   // no Promise, no
 
   <section data-core>
     <h2>Contending writers: seconds-long stalls</h2>
-    <p class="lead">One writer per file: eight Workers queue in SQLite's busy handler. Throughput moves either way; the tail doesn't.</p>
-    <div class="chart compact" data-unit="rows/s" data-scale="log" data-title="INSERT one 256 B row per statement, total across writers · log scale">
-      <div data-value="5049" data-display="5.0K">rollback journal, FULL · 1 writer</div>
-      <div class="bad" data-value="4165" data-display="4.2K" data-note="−18%">rollback journal, FULL · 8 Workers</div>
-      <div data-value="38904" data-display="39K">WAL, FULL · 1 writer</div>
-      <div class="bad" data-value="32274" data-display="32K" data-note="−17%">WAL, FULL · 8 Workers</div>
-      <div data-value="91070" data-display="91K">WAL, NORMAL · 1 writer</div>
-      <div class="good" data-value="118128" data-display="118K" data-note="+30%">WAL, NORMAL · 8 Workers</div>
-      <div data-value="256229" data-display="256K">WAL, OFF · 1 writer</div>
-      <div class="bad" data-value="206058" data-display="206K" data-note="−20%">WAL, OFF · 8 Workers</div>
+    <p class="lead">One writer per file: more Workers just queue in SQLite's busy handler. Throughput drops or stays flat; the tail explodes.</p>
+    <div class="chart compact" data-unit="rows/s" data-scale="log" data-title="INSERT one 256 B row per statement, total across writers · median of 3 runs · log scale">
+      <div data-value="4754" data-display="4.8K">rollback journal, FULL · 1 writer</div>
+      <div class="bad" data-value="4088" data-display="4.1K" data-note="−14%">rollback journal, FULL · 8 Workers</div>
+      <div data-value="38854" data-display="39K">WAL, FULL · 1 writer</div>
+      <div class="bad" data-value="32626" data-display="33K" data-note="−16%">WAL, FULL · 8 Workers</div>
+      <div data-value="88777" data-display="89K">WAL, NORMAL · 1 writer</div>
+      <div class="neutral" data-value="92796" data-display="93K" data-note="≈ flat">WAL, NORMAL · 8 Workers</div>
+      <div data-value="255428" data-display="255K">WAL, OFF · 1 writer</div>
+      <div class="bad" data-value="204385" data-display="204K" data-note="−20%">WAL, OFF · 8 Workers</div>
     </div>
     <div class="cols">
-      <div class="stat bad"><span class="stat-value">3.0–3.6 s</span><span class="stat-label">the slowest insert with 8 writers, in every journal mode (p99: under 0.1 ms)</span></div>
+      <div class="stat bad"><span class="stat-value">2.2–3.6 s</span><span class="stat-label">the slowest insert with 8 writers, in every journal mode (p99: under 0.1 ms)</span></div>
       <div class="card warn"><span class="card-title">The busy handler sleeps</span>A waiting writer sleeps and retries until <code>timeout</code>, blocking its thread.</div>
     </div>
-    <p class="source">benchmarks/sqlite-contention.mjs · 3 s per case, busy timeout 5 s · NVMe RAID1 (Samsung PM9A3) · EPYC 9355P · Node 26.10</p>
-    <aside class="notes">All 8-Worker runs share one file. Fix: funnel writes through one connection, or shard (next slide).</aside>
+    <p class="source">benchmarks/sqlite-contention.mjs · 3 × 3 s per case, busy timeout 5 s · NVMe RAID1 (Samsung PM9A3) · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">Why WAL + NORMAL stays flat: its commits don't fsync, but checkpoints do, and a lone writer pays for them. Other writers keep appending while one checkpoints. With auto-checkpoint off, one writer does 116K rows/s and 8 writers 88K (−25%), like the other modes. With 2 writers it swings between 91K and 119K from run to run. Fix: funnel writes through one connection, or shard (next slide).</aside>
   </section>
 
   <section>
