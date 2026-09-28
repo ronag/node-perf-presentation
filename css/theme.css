@@ -572,6 +572,6 @@ html.print-pdf .reveal .slides section { padding: 64px 72px 52px !important; }
 .reveal :is(.cols, .cols-3, .cols-4) + .chart { margin-top: 16px; }
 .reveal table.data { font-size: 0.64em; }
 .reveal table.data td.noise { color: var(--faint); }
-.reveal table.data .sep { border-left: 1px solid var(--line); }
+.reveal table.data .sepr { border-right: 1px solid var(--line); }
 .reveal .share { font-size: 0.7em; grid-template-columns: 110px 1fr 80px; row-gap: 10px; }
 .reveal .share .bar { height: 22px; }

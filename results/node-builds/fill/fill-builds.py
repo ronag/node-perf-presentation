@@ -177,17 +177,16 @@ def tune_cell(sub):
     if TUNE is None:
         return ''
     hits = [r for n, r in TUNE.items() if sub.lower() in n.lower()]
-    return (cell(hits[0], 'official', 'tune') if hits else '<td class="num">n/a</td>').replace('<td class="num', '<td class="sep num', 1)
-trs = [f'<tr><td>{html.escape(label)}</td>' + ''.join(cell(find(sub), a, b) for _, a, b in COLS) + cell(find(sub), 'official', 'v8') + tune_cell(sub) + '</tr>'
+    return (cell(hits[0], 'official', 'tune') if hits else '<td class="num">n/a</td>').replace('<td class="num', '<td class="sepr num', 1)
+trs = [f'<tr><td>{html.escape(label)}</td>' + tune_cell(sub) + ''.join(cell(find(sub), a, b) for _, a, b in COLS) + cell(find(sub), 'official', 'v8') + '</tr>'
        for sub, label in TABLE_ROWS]
 if TUNE is not None:
     # Step 0's thread-pool effect: none of the A/B workloads use the libuv pool (benchmarks/uv-threadpool.mjs)
-    trs.append('<tr><td>async crypto, libuv thread pool</td>' + '<td class="num noise">–</td>' * (len(COLS) + 1) +
-               '<td class="sep num win">+202%</td></tr>')
-table = ('<table class="data dense-table"><thead><tr><th></th>' + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
-         '<th class="num">total</th>' + ('<th class="sep num">Step 0: tune</th>' if TUNE else '') + '</tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
+    trs.append('<tr><td>async crypto, libuv thread pool</td><td class="sepr num win">+202%</td>' + '<td class="num noise">–</td>' * (len(COLS) + 1) + '</tr>')
+table = ('<table class="data dense-table"><thead><tr><th></th>' + ('<th class="sepr num">+tune</th>' if TUNE else '') + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
+         '<th class="num">total</th></tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
 s = s.replace('B_TABLE', table)
-s = s.replace('B_TUNE_NOTE', ' · Step 0: tuning flags on the official binary in a separate A/B, not part of the total; thread-pool crypto from uv-threadpool.mjs' if TUNE else '')
+s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary in a separate A/B, not part of the total; thread-pool crypto from uv-threadpool.mjs' if TUNE else '')
 
 left = re.findall(r'\bB_[A-Z0-9_]+', s)
 print('left placeholders:', left)
