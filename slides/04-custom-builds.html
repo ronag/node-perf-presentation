@@ -59,8 +59,8 @@
     <h2>Step 2: link-time optimization</h2>
     <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
     <div class="chart compact" data-signed data-unit="%" data-title="our build with the official compiler (Clang 20.1) → + full LTO · + is better">
-      <div class="noise" data-note="within noise" data-value="4.2">record churn under GC</div>
-      <div class="noise" data-note="within noise" data-value="3.2">Buffer.allocUnsafe 256 KiB chunk churn</div>
+      <div data-value="4.2">record churn under GC</div>
+      <div data-value="3.2">Buffer.allocUnsafe 256 KiB chunk churn</div>
       <div data-value="-2.6">gzip level 1, 1 MiB</div>
       <div data-value="-6.3">JSON.parse small object (~250 B)</div>
     </div>

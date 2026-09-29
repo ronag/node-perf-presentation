@@ -106,7 +106,7 @@ def movers(a, b, k=2, skip=()):
     return [n for d, n in sorted(cands, key=lambda t: -abs(t[0]))[:k]]
 
 def chart(a, b, extra=(), drop=(), min_abs=0.0, always=()):
-    """Rows that clear the noise bar; `always` rows are shown anyway, greyed and marked when within noise."""
+    """Rows that clear the noise bar, plus `always` rows shown regardless."""
     items = [(find(s), lab) for s, lab in SHOW if s not in drop] + [(rows[n], label(n)) for n in extra if n in rows]
     out = []
     for row, lab in items:
@@ -116,7 +116,7 @@ def chart(a, b, extra=(), drop=(), min_abs=0.0, always=()):
         if significant(row, a, b):
             out.append((d, lab, ''))
         elif row['name'] in always:
-            out.append((d, lab, ' class="noise" data-note="within noise"'))
+            out.append((d, lab, ''))   # shown as a normal row, by choice
         # else: within noise of 0%, not shown
     out.sort(key=lambda t: -t[0])
     return '\n      '.join(f'<div{attrs} data-value="{d * 100:.1f}">{html.escape(lab)}</div>' for d, lab, attrs in out)
