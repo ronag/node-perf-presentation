@@ -1,36 +1,94 @@
-clk: ~4.34 GHz
+clk: ~4.31 GHz
 cpu: AMD EPYC 9355P 32-Core Processor
 runtime: node 26.10.0 (x64-linux)
 
-benchmark                   avg (min … max) p75 / p99    (min … top 1%)
-------------------------------------------- -------------------------------
-• parse a request target
-------------------------------------------- -------------------------------
-new URL(target, base)        165.15 ns/iter 164.89 ns    ▅█                
-                    (158.74 ns … 439.00 ns) 186.90 ns    ██                
-                    ( 42.86  b … 367.98  b) 288.24  b ▁▆▇███▃▂▂▁▁▂▁▂▂▁▁▁▁▁▁
+benchmark                          avg (min … max) p75 / p99    (min … top 1%)
+-------------------------------------------------- -------------------------------
+• parse a 20 chars request target (fresh string per request)
+-------------------------------------------------- -------------------------------
+new URL(target, `http://${host}`)   278.94 ns/iter 274.63 ns   █                  
+                           (266.09 ns … 797.13 ns) 348.70 ns  ▆█                  
+                           ( 62.34  b … 401.31  b) 319.85  b ▁██▅▂▁▁▁▁▁▁▁▁▁▁▁▁▂▁▁▁
 
-URL.parse(target, base)      168.33 ns/iter 167.81 ns    █                 
-                    (163.42 ns … 372.70 ns) 186.48 ns    █                 
-                    (288.03  b … 354.57  b) 288.33  b ▂▁███▄▂▁▁▁▁▁▁▁▂▁▁▁▁▁▁
+URL.parse(target, `http://${host}`) 317.35 ns/iter 314.45 ns       █              
+                           (283.11 ns … 688.23 ns) 383.14 ns       █              
+                           (318.04  b … 863.60  b) 321.87  b ▁▁▁▁▁▁█▃▁▁▁▁▁▁▁▁▁▁▁▂▁
 
-url.parse(target) (legacy)   137.03 ns/iter 135.89 ns  █▄                  
-                    (132.63 ns … 699.73 ns) 155.12 ns  ██▂                 
-                    (307.27  b … 527.29  b) 310.54  b ▅███▅▂▂▂▁▁▁▁▁▁▁▂▂▁▁▁▁
+url.parse(target) (legacy)          117.11 ns/iter 118.65 ns  █ ▃                 
+                           (106.45 ns … 200.28 ns) 180.28 ns  ███▄                
+                           (279.98  b … 353.99  b) 280.29  b ▃████▂▂▁▁▁▁▁▁▁▁▁▁▁▁▂▁
 
-request-target               282.69 ns/iter 310.00 ns            █▇        
-                      (200.00 ns … 1.05 ms) 390.00 ns   ▃▅   █   ██        
-                    (432.00  b … 427.00 kb) 487.78  b ▁▂██▅▂▇█▇▄▁██▆▂▁▁▁▁▁▁
+request-target                      330.57 ns/iter 330.00 ns        █ ▂           
+                             (280.00 ns … 1.02 ms) 390.00 ns      ▂ █ █           
+                           (904.00  b … 427.13 kb) 919.35  b ▁▁▁▁▂█▂█▁█▁▆▁▂▁▁▁▁▁▁▁
 
-indexOf("?") + slice          12.37 ns/iter  12.28 ns █                    
-                     (11.89 ns … 139.72 ns)  23.91 ns █▇                   
-                    ( 86.11  b …  90.28  b)  86.12  b ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+indexOf("?") + slice                 16.09 ns/iter  15.59 ns  █                   
+                             (15.00 ns … 89.94 ns)  28.62 ns  █                   
+                           ( 79.92  b …  82.37  b)  80.14  b ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
 
 summary
   indexOf("?") + slice
-   11.08x faster than url.parse(target) (legacy)
-   13.35x faster than new URL(target, base)
-   13.61x faster than URL.parse(target, base)
-   22.85x faster than request-target
+   7.28x faster than url.parse(target) (legacy)
+   17.34x faster than new URL(target, `http://${host}`)
+   19.72x faster than URL.parse(target, `http://${host}`)
+   20.54x faster than request-target
+
+• parse a 60 chars request target (fresh string per request)
+-------------------------------------------------- -------------------------------
+new URL(target, `http://${host}`)   337.17 ns/iter 333.61 ns  █                   
+                           (328.15 ns … 447.47 ns) 407.49 ns  █                   
+                           (408.14  b … 819.69  b) 409.78  b ▁█▄▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+URL.parse(target, `http://${host}`) 346.03 ns/iter 341.17 ns ▅█                   
+                           (337.94 ns … 911.01 ns) 418.83 ns ██                   
+                           (408.20  b … 746.89  b) 410.37  b ██▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁
+
+url.parse(target) (legacy)          301.23 ns/iter 298.89 ns     █                
+                           (273.42 ns … 930.22 ns) 374.23 ns     ██               
+                           (153.80  b … 659.50  b) 424.23  b ▁▁▁▄██▅▁▁▁▁▁▁▁▁▁▁▂▂▂▁
+
+request-target                      261.89 ns/iter 257.85 ns    █                 
+                           (243.17 ns … 890.84 ns) 333.77 ns    █                 
+                           (640.17  b … 981.68  b) 640.84  b ▄▃▅█▃▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▁
+
+indexOf("?") + slice                 27.89 ns/iter  26.37 ns █                    
+                            (25.58 ns … 115.26 ns)  95.30 ns █                    
+                           ( 15.27  b … 194.56  b) 192.10  b █▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  indexOf("?") + slice
+   9.39x faster than request-target
+   10.8x faster than url.parse(target) (legacy)
+   12.09x faster than new URL(target, `http://${host}`)
+   12.41x faster than URL.parse(target, `http://${host}`)
+
+• parse a 200 chars request target (fresh string per request)
+-------------------------------------------------- -------------------------------
+new URL(target, `http://${host}`)   585.54 ns/iter 572.34 ns █                    
+                           (566.57 ns … 813.87 ns) 781.50 ns █                    
+                           (710.36  b …   1.13 kb) 712.43  b █▆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+URL.parse(target, `http://${host}`) 575.24 ns/iter 564.11 ns   █                  
+                           (540.95 ns … 821.77 ns) 798.94 ns ▃ █                  
+                           (393.58  b … 735.25  b) 656.38  b █▆█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+url.parse(target) (legacy)          807.76 ns/iter 860.45 ns ▇         █          
+                             (744.46 ns … 1.54 µs) 990.16 ns █▄▃▃▄     █          
+                           ( 47.94  b …   1.01 kb) 542.69  b █████▅▃▃▅██▁▁▁▁▂▁▁▁▁▂
+
+request-target                      555.75 ns/iter 540.90 ns ▂█                   
+                           (526.36 ns … 824.28 ns) 770.74 ns ██                   
+                           ( 20.97  b …   1.11 kb) 759.24  b ██▂▂▃▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁
+
+indexOf("?") + slice                 66.28 ns/iter  58.56 ns █                    
+                            (55.92 ns … 300.57 ns) 265.19 ns █                    
+                           (312.11  b … 316.17  b) 312.14  b █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+summary
+  indexOf("?") + slice
+   8.38x faster than request-target
+   8.68x faster than URL.parse(target, `http://${host}`)
+   8.83x faster than new URL(target, `http://${host}`)
+   12.19x faster than url.parse(target) (legacy)
 (node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
 (Use `node --trace-deprecation ...` to show where the warning was created)

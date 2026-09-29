@@ -1,5 +1,5 @@
-execArgv: --expose-gc  new_space: 18 MiB
-  throughput   30.56 M objects/s
-  scavenges    7 (14 ms)
-  mark-compact 380 (3399 ms)
-  GC share     68.1% of wall time
+execArgv: --expose-gc  new_space: 58 MiB
+  throughput   72.12 M objects/s
+  scavenges    1914 (2241 ms)
+  mark-compact 0 (0 ms)
+  GC share     44.8% of wall time

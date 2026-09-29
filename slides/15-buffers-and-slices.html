@@ -1,7 +1,7 @@
 <!-- BUFFERS ARE SLOW, USE SLICE -->
 <section id="buffers-and-slices" data-chapter="Buffers &amp; slices" data-chapter-num="14">
   <section class="section-header">
-    <h2>Buffers Are Slow: Use Slice</h2>
+    <h2>Buffer Views Are Slow: Use Slice</h2>
     <p><span class="npm-badge">@nxtedition/slice</span></p>
   </section>
 
@@ -14,7 +14,7 @@
   parseHeader(msg.subarray(0, 4))
   parseBody(msg.subarray(4))
 }
-// 2 Uint8Arrays per message</code></pre>
+// 2 new Buffers per message</code></pre>
       </div>
       <div>
         <div class="col-label good">Slice: one object, reused</div>
@@ -39,15 +39,15 @@ for (const msg of messages) {
   byteLength  // length
 }</code></pre>
     <div class="cols">
-      <div class="card bad"><span class="card-title">buf.subarray()</span>A new <code>Uint8Array</code> per call, through the species constructor and argument validation. Cannot be reused.</div>
+      <div class="card bad"><span class="card-title">buf.subarray()</span>A new Buffer per call (104 B): a full typed-array construction plus offset clamping. Cannot be reused.</div>
       <div class="card good"><span class="card-title">Slice</span>Three fields on one hidden class. Mutate and reuse.</div>
     </div>
-    <p class="muted">Node's I/O already speaks <code>(buffer, offset, length)</code>: <code>fs.read/write(Sync)</code>, <code>buf.copy</code>, <code>buf.toString</code>, <code>buf.write</code>.</p>
+    <p class="muted">Node's I/O already takes a buffer plus a range: <code>fs.read/write(Sync)(buf, offset, length)</code>, <code>buf.write(str, offset, length)</code>, <code>buf.copy</code> / <code>buf.toString(…, start, end)</code>.</p>
   </section>
 
   <section data-core>
     <h2><code>Buffer.subarray</code> vs Slice</h2>
-    <div class="chart" data-unit="ns" data-title="split a 4 KB buffer into header + body, per message">
+    <div class="chart" data-unit="ns" data-title="split a 4 KiB buffer into header + body, per message">
       <div class="bad" data-value="34.9" data-display="34.9 ns · 208 B">Buffer.subarray() × 2</div>
       <div class="good" data-value="1.24" data-display="1.24 ns · 0 B" data-note="28×">reused Slice</div>
     </div>
@@ -66,7 +66,7 @@ for (const msg of messages) {
       <div class="card bad"><span class="card-title">Pinning</span>One long-lived slice keeps the whole slab alive.</div>
       <div class="card bad"><span class="card-title">Still an object per call</span>Only the ArrayBuffer is shared; each call creates a new view.</div>
     </div>
-    <p class="callout bad">Long-lived buffers: use <code>Buffer.allocUnsafeSlow()</code> so they don't pin a slab.</p>
+    <p class="callout">Long-lived buffers: use <code>Buffer.allocUnsafeSlow()</code> so they don't pin a slab.</p>
   </section>
 
   <section data-core>
@@ -77,14 +77,14 @@ for (const msg of messages) {
       <div class="good" data-value="377" data-note="1.55×">poolSize 1 MiB</div>
     </div>
     <p class="muted">Node 26.3 raised the default from 8 KiB to 64 KiB. A bigger slab means fewer slab allocations, at the cost of more pinning.</p>
-    <p class="source">benchmarks/poolsize.mjs · EPYC 9355P · Node 26.10 · 1 KiB: 28.8 → 24.2 ns; ≥ 48 KiB: no change</p>
+    <p class="source">benchmarks/poolsize.mjs · EPYC 9355P · Node 26.10 · 1 KiB: 28.8 → 24.2 ns; 48 KiB: no change; 128 KiB: 3.08 → 3.53 µs (now pooled, slower)</p>
   </section>
 
   <section>
     <h2>A pool allocator</h2>
-    <p class="lead">One big region, power-of-two buckets, freed slots reused, never handed to the GC.</p>
+    <p class="lead">One big region, power-of-two buckets, freed slots reused: the memory is never handed to the GC.</p>
     <div class="cells" style="margin-bottom:14px">
-      <span class="c live" style="flex:3">64 B</span><span class="c moved">8 B</span><span class="c live" style="flex:4">256 B</span><span class="c dead">free</span><span class="c live" style="flex:2">32 B</span><span class="c moved">8 B</span><span class="c dead" style="flex:5">← next</span>
+      <span class="c live" style="flex:3">64 B</span><span class="c live" style="flex:4">256 B</span><span class="c dead">free</span><span class="c live" style="flex:2">32 B</span><span class="c dead" style="flex:5">free →</span>
     </div>
     <div class="cols-3">
       <div class="card good"><span class="card-title">alloc: O(1)</span>Pop a bucket's free list.</div>
@@ -106,15 +106,15 @@ pool.realloc(s, 0)                // free: slot recycled</code></pre>
 
   <section>
     <h2>Pool allocator vs <code>allocUnsafe</code></h2>
-    <div class="chart" data-unit="ns">
+    <div class="chart" data-unit="ns" data-title="allocate + free 8 KiB">
       <div class="bad" data-value="60.1">Buffer.allocUnsafe(8192)</div>
-      <div class="good" data-value="20.7" data-note="2.9×">PoolAllocator alloc + free 8 KiB</div>
-      <div class="good" data-value="11.3">two reallocs within one bucket</div>
+      <div class="good" data-value="20.7" data-note="2.9×">PoolAllocator</div>
     </div>
     <div class="chart" data-unit="µs" data-title="allocate 100 × 1 KiB, then free">
       <div class="bad" data-value="6.73">Buffer.allocUnsafe</div>
       <div class="good" data-value="2.09" data-note="3.2×">PoolAllocator</div>
     </div>
+    <p class="muted">At 1 KiB the gap is smaller: 28.1 vs 21.1 ns (1.3×). Two reallocs within one bucket: 11.3 ns, and each handle is still a small object the GC collects.</p>
     <p class="source">benchmarks/slice.mjs · EPYC 9355P · Node 26.10 (64 KiB default pool)</p>
   </section>
 </section>

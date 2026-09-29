@@ -31,8 +31,8 @@ dns.lookup(host, cb)              // DNS: also every http.get('host…')</code><
   <section>
     <h2>Gotchas</h2>
     <div class="cols-3">
-      <div class="card bad"><span class="card-title">Must be set early</span>Read once when the pool starts. <code>process.env</code> works only before the first pool task.</div>
-      <div class="card bad"><span class="card-title">More ≠ better</span>More memory and context switches. Pure page-cache fs can get slower. Maximum 1024.</div>
+      <div class="card bad"><span class="card-title">Must be set early</span>Read once, at the first pool task: set it in the environment or <code>process.env</code> before that. Maximum 1024.</div>
+      <div class="card bad"><span class="card-title">More ≠ better</span>More memory and context switches. Pure page-cache fs can get slower.</div>
       <div class="card bad"><span class="card-title">Shared across Workers</span>One pool per process: 4 Workers × default pool = ~1 thread each.</div>
     </div>
   </section>
@@ -47,16 +47,5 @@ dns.lookup(host, cb)              // DNS: also every http.get('host…')</code><
     </div>
     <p class="callout">Closed unmerged: “Just because there are many CPUs in a host, it doesn't mean they are free. Saturating the CPU is worse than queuing I/O tasks.” Size it for <em>your</em> workload.</p>
     <p class="source">Benchmarks by @RafaelGSS, AMD EPYC-Rome 16 vCPU, autocannon, 100 connections</p>
-  </section>
-
-  <section>
-    <h2>Coordinating with a scheduler</h2>
-    <pre><code class="language-javascript">import { Scheduler } from '@nxtedition/scheduler'
-
-const poolSize = Number(process.env.UV_THREADPOOL_SIZE ?? 4)
-const io = new Scheduler(Scheduler.makeSharedState(poolSize)) // share it
-
-const handleRequest = () => io.run(() => fs.promises.readFile(path), 'high')
-const backgroundIndex = () => io.run(() => fs.promises.readFile(path), 'low')</code></pre>
   </section>
 </section>

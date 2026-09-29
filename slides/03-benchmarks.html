@@ -19,20 +19,22 @@
 
   <section>
     <h2>Keep the work alive</h2>
-    <pre class="big"><code class="language-javascript">import { bench, do_not_optimize } from 'mitata'
+    <pre class="big"><code class="language-javascript">import { bench, run, do_not_optimize } from 'mitata'
 
+const data = Float64Array.from({ length: 1 << 20 }, Math.random)  // random, not constants
 bench('sum', () => {
   let sum = 0
-  for (let i = 0; i < n; i++) sum += data[i]   // inputs vary per run
-  do_not_optimize(sum)                          // result is observed
-})</code></pre>
+  for (let i = 0; i < data.length; i++) sum += data[i]
+  do_not_optimize(sum)                                            // the result is observed
+})
+await run()</code></pre>
   </section>
 
   <section>
     <h2>The CPU cheats too</h2>
     <div class="cols-3">
       <div class="card warn"><span class="card-title">Branch prediction</span>A loop that always takes the same branch is “memorized”. Production branches aren't.</div>
-      <div class="card warn"><span class="card-title">Caches</span>Benchmark data fits in L1/L2. Production data doesn't: 2 ns/op becomes 20.</div>
+      <div class="card warn"><span class="card-title">Caches</span>Benchmark data fits in L1/L2. Production data doesn't: a cache miss costs ~100× an L1 hit.</div>
       <div class="card warn"><span class="card-title">Out-of-order execution</span>Tight loops overlap independent work far better than real call chains.</div>
     </div>
     <p class="callout">A benchmark is the best case for both V8 and the CPU. Production is the worst case.</p>
@@ -40,7 +42,7 @@ bench('sum', () => {
 
 
   <section>
-    <h2>Big-O counts steps, not cache misses</h2>
+    <h2>Big-O hides the constants</h2>
     <div class="chart" data-unit="ns" data-scale="log" data-title="remove + re-add a random item, N = 10,000">
       <div class="good" data-value="10.2">intrusive array, swap-remove · O(1)</div>
       <div class="good" data-value="14.2">intrusive linked list · O(1)</div>
@@ -49,24 +51,24 @@ bench('sum', () => {
       <div class="bad" data-value="4000">indexOf + splice · O(n)</div>
     </div>
     <p class="muted">Four O(1) structures, 10× apart: allocation, hashing and pointer chasing are the constants Big-O hides.</p>
-    <p class="source">benchmarks/intrusive-containers.mjs · log scale</p>
+    <p class="source">benchmarks/intrusive-containers.mjs · EPYC 9355P · Node 26.10 · log scale</p>
   </section>
 
   <section>
     <h2>Rules for trustworthy benchmarks</h2>
     <ol>
-      <li class="fragment fade-up"><strong>Consume results</strong> (<code>do_not_optimize</code>) and <strong>randomize inputs</strong>.</li>
-      <li class="fragment fade-up"><strong>Warm up</strong>, then measure what TurboFan produces.</li>
-      <li class="fragment fade-up"><strong>Use production sizes</strong>: 100 MB of data, not 1 KB.</li>
-      <li class="fragment fade-up"><strong>Watch allocation and GC</strong>, not just time.</li>
-      <li class="fragment fade-up"><strong>Use production hardware</strong>: pinned cores, the real OS. Every number here: AMD EPYC 9355P, Linux, Node 26.10, Docker.</li>
-      <li class="fragment fade-up"><strong>Validate against production.</strong> If they disagree, trust production.</li>
+      <li><strong>Consume results</strong> (<code>do_not_optimize</code>) and <strong>randomize inputs</strong>.</li>
+      <li><strong>Warm up</strong>, then measure what TurboFan produces.</li>
+      <li><strong>Use production sizes</strong>: 100 MiB of data, not 1 KiB.</li>
+      <li><strong>Watch allocation and GC</strong>, not just time.</li>
+      <li><strong>Use production hardware</strong>: pinned cores, the real OS. Unless marked otherwise: AMD EPYC 9355P, Linux, Node 26.10, Docker, pinned cores.</li>
+      <li><strong>Validate against production.</strong> If they disagree, trust production.</li>
     </ol>
   </section>
 
   <section class="statement">
     <div class="quote">“Robert… have you measured?”</div>
-    <div class="quote-by">— Jesper, every single time</div>
+    <div class="quote-by">— Jesper, my colleague, every single time</div>
     <p class="lead" style="margin-top:28px">Your intuition about performance is almost certainly wrong.<br>
       <strong>Measure. Then measure again. Then look at the trend, not the nanoseconds.</strong></p>
   </section>

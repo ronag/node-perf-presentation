@@ -8,7 +8,7 @@
   <section>
     <h2>V8's generational GC</h2>
     <div class="cols-3" style="align-items:center">
-      <div class="card good"><span class="card-title">Young generation</span>Scavenge (copying)<br>up to 32 MiB semi-spaces<br>~0.5–2 ms pauses<br><strong>cheap</strong></div>
+      <div class="card good"><span class="card-title">Young generation</span>Scavenge (copying)<br>up to 32 MiB semi-spaces<br>~1–3 ms pauses<br><strong>cheap</strong></div>
       <img src="img/IMG_5390.jpeg" alt="Young generation and old generation" style="max-height:320px;border-radius:12px;margin:0 auto">
       <div class="card bad"><span class="card-title">Old generation</span>Mark-compact<br>up to GBs<br>10–100+ ms final pauses<br><strong>expensive</strong></div>
     </div>
@@ -33,12 +33,12 @@
         <div class="col-label good">Scavenge: copy the survivors</div>
         <div class="cells"><span class="c dead">·</span><span class="c live">A</span><span class="c dead">·</span><span class="c dead">·</span><span class="c dead">·</span><span class="c dead">·</span><span class="c live">B</span></div>
         <div class="cells" style="margin-top:8px"><span class="c live">A</span><span class="c live">B</span><span class="c dead"> </span><span class="c dead"> </span><span class="c dead"> </span><span class="c dead"> </span><span class="c dead"> </span></div>
-        <p class="small" style="margin-top:10px">Cost ∝ survivors. Dead objects are free.</p>
+        <p class="small" style="margin-top:10px">Cost scales with survivors. Dead objects are free.</p>
       </div>
       <div>
         <div class="col-label bad">Mark-compact: trace everything reachable</div>
         <div class="cells"><span class="c hot">A</span><span class="c hot">B</span><span class="c dead">·</span><span class="c hot">C</span><span class="c hot">D</span><span class="c hot">E</span><span class="c hot">F</span></div>
-        <p class="small" style="margin-top:10px">Cost ∝ live objects, every major GC, even idle caches, pools and timers.</p>
+        <p class="small" style="margin-top:10px">Cost scales with live objects, every major GC, even idle caches, pools and timers.</p>
       </div>
     </div>
   </section>
@@ -54,17 +54,12 @@ return transform(data)
 // BEST: no allocation at all
 reusable.buffer = data.buffer; reusable.offset = data.offset
 return handle(reusable)</code></pre>
-    <div class="chart" data-unit="µs" data-title="1,000 objects per iteration">
-      <div class="bad" data-value="3.01">allocate new objects</div>
-      <div class="good" data-value="1.04" data-note="2.9×">reuse one object</div>
-    </div>
-    <p class="source">benchmarks/gc-pressure.mjs</p>
   </section>
 
   <section>
     <h2>GC impact on latency</h2>
     <div class="cols">
-      <div class="stat good"><span class="stat-value">0.5–2 ms</span><span class="stat-label">scavenge: usually fine</span></div>
+      <div class="stat good"><span class="stat-value">~1–3 ms</span><span class="stat-label">scavenge: usually fine</span></div>
       <div class="stat bad"><span class="stat-value">10–100+ ms</span><span class="stat-label">mark-compact: the p99 killer</span></div>
     </div>
     <p class="callout">Caching reduces allocation but creates long-lived objects the GC traces on every major collection, even if you never touch them again. Choose the trade-off deliberately.</p>
@@ -87,7 +82,7 @@ return handle(reusable)</code></pre>
       <div class="card good"><span class="card-title">Reuse = fewer allocations</span>No young-generation churn, no promotion.</div>
       <div class="card bad"><span class="card-title">Large pool = large old generation</span>Every pooled object is traced on every major GC, even if idle.</div>
     </div>
-    <pre><code class="language-javascript">function acquire () { return pool.pop() ?? new Obj() }
+    <pre style="margin-top:16px"><code class="language-javascript">function acquire () { return pool.pop() ?? new Obj() }
 
 function release (obj) {
   if (pool.length < 1000) pool.push(obj)   // bounded; let the GC take the overflow
@@ -115,8 +110,8 @@ function release (obj) {
   <section data-core>
     <h2>Semi-space tuning</h2>
     <div class="chart" data-unit="M objects/s" data-title="allocation-heavy work, 20K request graphs kept alive">
-      <div class="bad" data-value="72.0" data-display="72.0 M/s · 45% of time in GC">default</div>
-      <div class="good" data-value="91.5" data-display="91.5 M/s · 28% of time in GC" data-note="+27%">--max-semi-space-size=64</div>
+      <div class="bad" data-value="72.1" data-display="72.1 M/s · 45% of time in GC">default</div>
+      <div class="good" data-value="92.5" data-display="92.5 M/s · 28% of time in GC" data-note="+28%">--max-semi-space-size=64</div>
     </div>
     <div class="cols">
       <div class="card info"><span class="card-title">Small</span>Short scavenges, but objects promote sooner → more major GC. For latency-sensitive, low-allocation work.</div>

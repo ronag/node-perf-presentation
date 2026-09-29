@@ -51,7 +51,8 @@
     "@nxtedition/cache": "^3.3.12",
     "@nxtedition/shared": "^6.0.8",
     "@nxtedition/slice": "^2.1.1",
-    "@nxtedition/timers": "^1.1.16"
+    "@nxtedition/timers": "^1.1.16",
+    "request-target": "^1.0.2"
   },
   "devDependencies": {
     "autocannon": "^8.0.0"

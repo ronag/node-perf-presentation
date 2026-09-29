@@ -170,6 +170,7 @@ loadIncludes().then(() => {
   applyCorePath()
   renderCharts()
   Reveal.initialize({
+    navigationMode: 'linear',   // → and Space both step through every slide, chapter by chapter
     hash: true,
     history: false,
     slideNumber: 'c/t',

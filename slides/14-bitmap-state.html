@@ -18,16 +18,17 @@
   destroyed  = false
   // … 25 more booleans
 }
-// one field (8 bytes) per flag</code></pre>
+// one field (8 bytes, 4 with pointer compression) per flag</code></pre>
       </div>
       <div>
         <div class="col-label good">Bitmap: all state in one integer</div>
         <pre><code class="language-javascript">const kObjectMode = 1 << 0
 const kEnded      = 1 << 1
-const kReading    = 1 << 3
+const kReading    = 1 << 2
+const kFlowing    = 1 << 3
 const kDestroyed  = 1 << 4
 
-let state = 0     // one Smi, stay below bit 31
+let state = 0     // one Smi: bits 0–29 are safe everywhere
 state |= kReading          // set
 state &= ~kReading         // clear
 state & kReading           // test</code></pre>
@@ -36,7 +37,7 @@ state & kReading           // test</code></pre>
   </section>
 
   <section>
-    <h2>Compound tests are free</h2>
+    <h2>Compound tests: one AND</h2>
     <pre class="big"><code class="language-javascript">const kDone = kEnded | kDestroyed | kClosed | kErrored
 
 if (state & kDone) return   // 1 AND, 1 branch
@@ -47,33 +48,23 @@ if (s.ended || s.destroyed || s.closed || s.errored) return</code></pre>
 
   <section>
     <h2>Counters in the low bits</h2>
-    <div class="cells" style="max-width:760px">
+    <div class="cells">
       <span class="c live" style="flex:3">flags · 1 bit each</span><span class="c moved" style="flex:1">counter · 8 bits</span>
     </div>
     <pre style="margin-top:16px"><code class="language-javascript">const kCounterMask = 0xff     // bits 0–7 (max 255)
 const kFlag        = 1 << 8   // flags start above the counter
 
-state++                // increment: no shift, no mask
+state++                // no shift, no mask; stay ≤ 255 or it carries into kFlag
 state & kCounterMask   // read the counter
-state & kFlag          // flags are unaffected</code></pre>
+state & kFlag          // flags unaffected while the counter stays in range</code></pre>
     <p class="muted">Reference counts, queue depths, pending I/O: all packable next to the flags.</p>
   </section>
 
   <section data-core>
     <h2>Object vs bitmap</h2>
-    <div class="cols">
-      <div class="chart" data-unit="ns" data-title="test 31 flags">
-        <div class="bad" data-value="1.36">31 fields</div>
-        <div class="good" data-value="0.285" data-note="4.8×">one AND</div>
-      </div>
-      <div class="chart" data-unit="ns" data-title="reset 31 flags">
-        <div class="bad" data-value="2.07">31 writes</div>
-        <div class="good" data-value="0.289" data-note="7.2×">state = 0</div>
-      </div>
-    </div>
     <div class="chart" data-unit="µs" data-title="scan 64K states for any flag set">
-      <div class="bad" data-value="428" data-display="428 µs · ~17 MB of objects">objects</div>
-      <div class="good" data-value="24.4" data-display="24.4 µs · 256 KB" data-note="17.6×">Int32Array of bitmaps</div>
+      <div class="bad" data-value="428" data-display="428 µs · ~17 MiB of objects">objects</div>
+      <div class="good" data-value="24.4" data-display="24.4 µs · 256 KiB" data-note="17.5×">Int32Array of bitmaps</div>
     </div>
     <p class="source">benchmarks/bitmap.mjs · EPYC 9355P · Node 26.10. Density is the real win: more states per cache line.</p>
     <aside class="notes">⏱ 19:00</aside>

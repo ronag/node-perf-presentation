@@ -8,6 +8,7 @@
   <section>
     <h2>The cluster module</h2>
     <pre class="big"><code class="language-javascript">import cluster from 'node:cluster'
+import { availableParallelism } from 'node:os'
 
 if (cluster.isPrimary) {
   for (let i = 0; i < availableParallelism(); i++) cluster.fork()
@@ -16,8 +17,8 @@ if (cluster.isPrimary) {
 }</code></pre>
     <div class="cols-4">
       <div class="card bad"><span class="card-title">Primary in the path</span>It accepts every connection and hands it over IPC</div>
-      <div class="card bad"><span class="card-title">Round-robin</span>Ignores how busy each worker is</div>
-      <div class="card bad"><span class="card-title">A process each</span>A full runtime and heap per worker</div>
+      <div class="card bad"><span class="card-title">Round-robin</span>Ignores how busy each process is</div>
+      <div class="card bad"><span class="card-title">A process each</span>A full runtime and heap per process</div>
       <div class="card bad"><span class="card-title">IPC</span>JSON serialization to share anything</div>
     </div>
   </section>
@@ -25,16 +26,16 @@ if (cluster.isPrimary) {
   <section data-core>
     <h2>Worker threads + <code>reusePort</code></h2>
     <pre class="big"><code class="language-javascript">const n = availableParallelism()
-for (let i = 0; i < n; i++) new Worker('./http-worker.js')
+for (let i = 0; i < n; i++) new Worker(new URL('./http-worker.js', import.meta.url))
 
 // http-worker.js: every Worker binds the same port
 http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
     <div class="cols-3">
       <div class="card good"><span class="card-title">Kernel load balancing</span><code>SO_REUSEPORT</code>: the OS distributes connections. No primary bottleneck.</div>
       <div class="card good"><span class="card-title">Shared memory</span>Workers share a process: SharedArrayBuffer + Atomics.</div>
-      <div class="card good"><span class="card-title">eBPF steering</span>Attach a BPF program to the socket group to steer by CPU, session or load.</div>
+      <div class="card good"><span class="card-title">eBPF steering</span>Attach a BPF program to the socket group to steer by CPU, session or load. Linux only, and it needs a native addon: Node has no API.</div>
     </div>
-    <p class="source">Node ≥ 22.12 / 23.1. Linux 3.9+, FreeBSD 12+ and a few others; it throws on macOS and Windows.</p>
+    <p class="source">Node ≥ 22.12 / 23.1. Linux 3.9+, FreeBSD 12+ and a few others; on macOS and Windows <code>listen</code> fails with <code>ENOTSUP</code>.</p>
     <aside class="notes">⏱ 17:00. How the kernel picks: every Worker has its own listening socket in one SO_REUSEPORT group. For each new connection the kernel hashes the 4-tuple (source IP, source port, destination IP, destination port) and picks socket = hash mod group size. No shared accept queue, no primary, no thundering herd. But it balances connections, not load: a long keep-alive connection sticks to one Worker, a blocked Worker still gets its share of new connections, and a few connections can land unevenly (4 connections on 4 Workers: all on different Workers only 9% of the time). Adding or removing a Worker reshuffles the mapping. An eBPF SK_REUSEPORT program can override the choice: by CPU, by session, or least-loaded.</aside>
   </section>
 
@@ -60,16 +61,15 @@ http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
   <section>
     <h2>Comparison</h2>
     <table class="data">
-      <thead><tr><th></th><th>cluster</th><th>Workers + reusePort</th></tr></thead>
+      <thead><tr><th></th><th>cluster</th><th>Workers + <code>reusePort</code></th></tr></thead>
       <tbody>
         <tr><td>Connection routing</td><td>the primary process</td><td>the kernel</td></tr>
         <tr><td>Load balancing</td><td>round-robin</td><td>4-tuple hash (eBPF to steer)</td></tr>
-        <tr><td>Sharing state</td><td>IPC only</td><td>SharedArrayBuffer</td></tr>
-        <tr><td>Communication</td><td>JSON over IPC</td><td>shared memory + Atomics</td></tr>
-        <tr><td>Memory per worker</td><td>a whole process</td><td>an isolate + heap in one process</td></tr>
+        <tr><td>Sharing state</td><td>JSON over IPC</td><td>SharedArrayBuffer + Atomics, or <code>postMessage</code></td></tr>
+        <tr><td>Memory each</td><td>a whole process</td><td>an isolate + heap in one process</td></tr>
         <tr><td>Primary in the path</td><td class="loss">for every new connection</td><td class="win">never</td></tr>
       </tbody>
     </table>
-    <p class="muted">Remember: every Worker in a process shares one libuv thread pool (next).</p>
+    <p class="muted" style="margin-top:22px">Remember: every Worker in a process shares one libuv thread pool (next).</p>
   </section>
 </section>

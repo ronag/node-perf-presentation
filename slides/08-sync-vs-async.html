@@ -7,19 +7,19 @@
 
 
   <section data-core>
-    <h2>Sync vs async: 12× on Linux, 190× on macOS</h2>
+    <h2>Sync vs async: 12–13×, on Linux and macOS</h2>
     <div class="cols">
       <div class="card info"><span class="card-title">fs.read(fd, buf, 0, len, 0, cb)</span>Thread pool hop + syscall + callback + async context</div>
       <div class="card good"><span class="card-title">fs.readSync(fd, buf, 0, len, 0)</span>Syscall on the calling thread</div>
     </div>
-    <div class="chart" data-unit="µs" data-scale="log" data-title="read 4 KB from the page cache, one at a time">
+    <div class="chart" data-unit="µs" data-scale="log" data-title="read 4 KiB from the page cache, one at a time · log scale">
       <div class="good" data-value="0.377">fs.readSync · EPYC / Linux</div>
       <div class="bad" data-value="4.65" data-note="12×">fs.read · EPYC / Linux</div>
-      <div class="good" data-value="0.603">fs.readSync · M3 / macOS</div>
-      <div class="bad" data-value="115" data-note="190×">fs.read · M3 / macOS</div>
+      <div class="good" data-value="0.521">fs.readSync · M3 Pro / macOS</div>
+      <div class="bad" data-value="6.97" data-note="13×">fs.read · M3 Pro / macOS</div>
     </div>
-    <p class="source">benchmarks/fs-sync-vs-async.mjs · Node 26.10 (Linux) / 25.3 (macOS) · 4 MB reads: 85 vs 231 µs on Linux (2.7×)</p>
-    <aside class="notes">The async price is a thread-pool round trip, and the OS sets it: thread wake-ups are much slower on macOS.</aside>
+    <p class="source">benchmarks/fs-sync-vs-async.mjs · Node 26.10 on both · 4 MiB reads: 85 vs 231 µs on Linux (2.7×), 480 vs 570 µs on macOS (1.2×)</p>
+    <aside class="notes">The async price is a thread-pool round trip: about 4–7 µs on both OSes. An older Node 25.3 run on macOS showed 190×; Node 26.10 on an M3 Pro measures 13×.</aside>
   </section>
 
   <section>
@@ -49,6 +49,6 @@ export default function ({ filePath }) {
 // main.js
 const pool = new Piscina({ filename: new URL('./worker.js', import.meta.url).href })
 const hash = await pool.run({ filePath })</code></pre>
-    <p class="source">benchmarks/file-hash-worker.mjs: 128 MB, sync 140 ms vs async 150 ms, and no Promise per chunk</p>
+    <p class="source">benchmarks/file-hash-worker.mjs (one thread): 128 MiB, sync 140 ms vs async 150 ms (1.07×), 280 KB vs 2.2 MB allocated</p>
   </section>
 </section>

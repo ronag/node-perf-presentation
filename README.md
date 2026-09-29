@@ -39,7 +39,7 @@ The deck has ~140 slides, far more than 30 minutes allow.
 | Title | 1 | 0:00–1:00 |
 | Build your own Node: official → 0 tune → 1 mimalloc → 2 LTO → 3 -march=znver5 → 4 Clang 23 → 5 PGO (+ "you get what you train") → 6 pointer compression → 7 patch V8 → all together | 11 | 1:00–10:00 |
 | GC semi-space; HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 4 | 10:00–12:30 |
-| async/await cost, async return pattern, sync I/O (12× / 190×) | 3 | 12:30–14:30 |
+| async/await cost, async return pattern, sync I/O (12–13×) | 3 | 12:30–14:30 |
 | SQLite: prepare once, durability, contending writers, sharding | 4 | 14:30–17:00 |
 | Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool, ring buffer | 4 | 17:00–19:00 |
 | Bitmaps, Slice, `Buffer.poolSize` | 3 | 19:00–21:00 |
@@ -87,7 +87,7 @@ A `data-unit` of `ps`, `ns`, `µs`, `ms` or `s` auto-scales the value (for examp
 
 ## Benchmarks
 
-Every number in the main track comes from `benchmarks/`, run inside Docker on **tv2k-srv4**: an AMD EPYC 9355P (Zen 5) with Node.js 26.10.0, pinned to one core (`--cpuset-cpus=4`, or 2–7 for the threaded ones). Raw output is in `results/`.
+Unless a slide says otherwise, every number comes from `benchmarks/`, run inside Docker on **tv2k-srv4**: an AMD EPYC 9355P (Zen 5) with Node.js 26.10.0. Single-threaded benchmarks run on one pinned core; threaded ones on 4–16 pinned cores, as each slide's source line says. A few slides are marked as macOS (M3 Pro) or production measurements. Raw output is in `results/`.
 
 ```sh
 npm run bench                 # everything, sequentially → results/<node version>/
@@ -97,7 +97,7 @@ docker run --rm --cpuset-cpus=4 -v $PWD:/bench -w /bench node:26.10.0 node scrip
 
 - Most scripts need `--expose-gc` (the npm scripts pass it). mitata's `.gc('inner')` collects between samples, so GC time is **not** included in the reported numbers.
 - `sqlite-*.mjs` should run on a real disk: `BENCH_DIR=/data` with a Docker volume, not tmpfs.
-- `timers`, `cross-thread` and `slice` need the private `@nxtedition/*` packages, and `url.mjs` optionally uses `request-target`.
+- `timers`, `cross-thread` and `slice` need the private `@nxtedition/*` packages, and `url.mjs` needs `request-target` (an optional dependency).
 
 ### Custom Node builds (the "Build your own Node" chapter)
 

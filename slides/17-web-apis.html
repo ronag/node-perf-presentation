@@ -8,14 +8,14 @@
   <section data-core>
     <h2>URL parsing</h2>
     <div class="chart" data-unit="ns" data-title="parse a 60-char request target, a fresh string per request, base from the Host header">
-      <div class="bad" data-value="375">new URL(target, `http://${host}`)</div>
-      <div data-value="324">URL.parse(target, base)</div>
-      <div data-value="291">url.parse(target) · legacy, deprecated</div>
-      <div class="good" data-value="257" data-note="1.5×">request-target · RFC 7230, HTTP only</div>
-      <div class="good" data-value="28.5" data-note="13×">indexOf('?') + slice</div>
+      <div class="bad" data-value="337">new URL(target, `http://${host}`)</div>
+      <div data-value="346">URL.parse(target, base)</div>
+      <div data-value="301">url.parse(target) · legacy, deprecated</div>
+      <div data-value="262" data-note="1.3×">request-target · RFC 7230, HTTP only</div>
+      <div class="good" data-value="27.9" data-note="12×">indexOf('?') + slice</div>
     </div>
-    <p class="muted"><code>new URL()</code> handles IDNA, schemes and normalization a request line never needs. At 20 chars request-target and <code>new URL()</code> are even; at 200 chars it's 1.1×.</p>
-    <p class="source">benchmarks/url.mjs · EPYC 9355P · Node 26.10. With one constant string, V8 reuses work and regex parsers look up to 2× faster than a server sees them.</p>
+    <p class="muted">Swapping parsers barely matters: request-target is 1.3× faster at 60 chars, slower at 20 (331 vs 279 ns) and even at 200. If you only need the path and the query, split them yourself.</p>
+    <p class="source">benchmarks/url.mjs · EPYC 9355P · Node 26.10</p>
     <aside class="notes">⏱ 21:00</aside>
   </section>
 
@@ -32,15 +32,15 @@
 
   <section>
     <h2>Web streams vs Node streams</h2>
-    <div class="chart" data-unit="µs" data-scale="log" data-title="create one stream (per-request cost)">
-      <div class="bad" data-value="6.07" data-display="6.07 µs · 2.1 KB">new ReadableStream</div>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="create one stream (per-request cost) · log scale">
+      <div class="bad" data-value="6.07" data-display="6.07 µs · 2.1 KiB">new ReadableStream</div>
       <div class="good" data-value="0.0196" data-display="19.6 ns · 377 B" data-note="310×">new Readable</div>
     </div>
-    <div class="chart" data-unit="µs" data-title="500 × 64 KB">
-      <div class="bad" data-value="34.7">Web: consume</div>
-      <div class="good" data-value="17.2" data-note="2.0×">Node: consume</div>
+    <div class="chart" data-unit="µs" data-title="500 × 64 KiB">
+      <div class="bad" data-value="34.7">Web: consume (for await)</div>
+      <div class="good" data-value="17.2" data-note="2.0×">Node: consume ('data' events)</div>
       <div class="bad" data-value="61.9">Web: write</div>
-      <div class="good" data-value="13.3" data-note="4.6×">Node: write</div>
+      <div class="good" data-value="13.3" data-note="4.7×">Node: write</div>
     </div>
     <p class="source">benchmarks/streams.mjs · EPYC 9355P · Node 26.10. <code>await writer.write()</code> costs a microtask per chunk.</p>
   </section>

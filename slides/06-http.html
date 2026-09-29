@@ -24,7 +24,7 @@ res.uncork()             // still one chunk per piece</code></pre>
         <div class="col-label good">Build a slab, write big chunks</div>
         <pre><code class="language-javascript">let slab = Buffer.allocUnsafeSlow(256 << 10)
 let n = 0
-function put (b) {
+function put (b) {   // strings: slab.write(s, n)
   if (n + b.length > slab.length) flush()
   n += b.copy(slab, n)
 }
@@ -48,7 +48,7 @@ function flush () {
       <div class="bad" data-value="367.8" data-note="1.0×">Buffers · cork() + uncork()</div>
       <div class="good" data-value="1712.8" data-note="4.7×">Buffers · 256 KiB slab</div>
     </div>
-    <p class="muted">In production, a streaming JSON feed went from 75k to 349k rows/s (4.6×), with 65% less CPU and p99 from 262 to 57 ms.
+    <p class="muted">In production, a streaming JSON feed went from 75K to 349K rows/s (4.7×), with 65% less CPU and p99 from 262 to 57 ms.
       Respect backpressure, and flush before waiting on a live feed.</p>
     <p class="source">benchmarks/res-write.mjs · EPYC 9355P · Node 26.10 · client in a Worker, keep-alive</p>
   </section>
@@ -58,18 +58,18 @@ function flush () {
     <h2>Bring your own <code>ServerResponse</code></h2>
     <pre><code class="language-javascript">class Response extends http.ServerResponse {
   #h = Object.create(null)
-  setHeader (key, val) { this.#h[key] = val; return this } // trusted names
-  getHeaders () { return this.#h }                          // no copy
+  setHeader (k, v) { this.#h[k] = v; return this }   // trusted names
+  getHeader (k) { return this.#h[k] }
+  removeHeader (k) { delete this.#h[k] }
+  getHeaders () { return this.#h }                    // no copy
+  writeHead (status, headers = this.#h) { return super.writeHead(status, headers) }
 }
-http.createServer({ IncomingMessage: Request, ServerResponse: Response }, handler)</code></pre>
-    <div class="chart" data-unit="ns" data-title="setHeader + getHeader + removeHeader">
+http.createServer({ ServerResponse: Response }, handler)</code></pre>
+    <div class="chart compact" data-unit="ns" data-title="setHeader + getHeader + removeHeader · getHeaders() returns the object: 0.3 ns vs 30–330 ns for core's copy">
       <div class="bad" data-value="84">node:http</div>
       <div class="good" data-value="40" data-note="2.1×">subclass with a plain header object</div>
     </div>
-    <div class="cols">
-      <div class="stat good"><span class="stat-value">0.3 ns</span><span class="stat-label"><code>getHeaders()</code> vs 30–330 ns for core's defensive copy</span></div>
-      <div class="card bad"><span class="card-title">Here be dragons</span>Skips core's validation and leans on undocumented internals. Not safe in general: only if you know exactly what you are doing. Re-test on every Node upgrade.</div>
-    </div>
+    <p class="callout bad"><strong>Here be dragons.</strong> Skips core's checks in <code>setHeader</code> and leans on how core writes headers. Not safe in general: only if you know exactly what you are doing. Re-test on every Node upgrade.</p>
     <p class="source">Production service measurement.</p>
   </section>
 

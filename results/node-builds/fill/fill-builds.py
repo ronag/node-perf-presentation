@@ -9,6 +9,19 @@ text = open(sys.argv[1]).read()
 data = json.loads(text[: text.index('\n\n| Benchmark')])
 rows = {r['name']: r for r in data['rows']}
 PUBLIC = [n for n in rows if 'deepstream' not in n.lower()]   # internal workload names stay off slides
+LABELS = {
+    'JSON.parse general domain': 'JSON.parse small object (~250 B)',
+    'JSON.stringify general domain': 'JSON.stringify small object (~250 B)',
+    'JSON.parse record value': 'JSON.parse small record',
+    'JSON.stringify record value': 'JSON.stringify small record',
+    'JSON.parse RPC message': 'JSON.parse small message',
+    'JSON.stringify RPC message': 'JSON.stringify small message',
+    'Buffer.copy 128 KiB, storage chunk': 'Buffer.copy 128 KiB',
+    'SHA-256 128 KiB, storage chunk': 'SHA-256 128 KiB',
+    'Buffer frame encode/decode 256 B': 'Buffer frame encode + decode, 256 B',
+}
+def label(n):
+    return LABELS.get(n, n.replace(' holdout', ''))
 PREV = None   # optional earlier chain with its own PGO trainings: PGO-trained steps must reproduce there
 if len(sys.argv) > 3 and os.path.exists(sys.argv[3]):
     pt = open(sys.argv[3]).read()
@@ -93,15 +106,15 @@ def movers(a, b, k=2, skip=()):
     return [n for d, n in sorted(cands, key=lambda t: -abs(t[0]))[:k]]
 
 def chart(a, b, extra=(), drop=(), min_abs=0.0):
-    items = [(find(s), label) for s, label in SHOW if s not in drop] + [(rows[n], n) for n in extra if n in rows]
+    items = [(find(s), lab) for s, lab in SHOW if s not in drop] + [(rows[n], label(n)) for n in extra if n in rows]
     out = []
-    for row, label in items:
+    for row, lab in items:
         d = delta(row, a, b)
         if d is None or abs(d) > 5 or not significant(row, a, b):
             continue   # within noise of 0%: not shown
-        out.append((d, label))
+        out.append((d, lab))
     out.sort(key=lambda t: -t[0])
-    return '\n      '.join(f'<div data-value="{d * 100:.1f}">{html.escape(label)}</div>' for d, label in out)
+    return '\n      '.join(f'<div data-value="{d * 100:.1f}">{html.escape(lab)}</div>' for d, lab in out)
 
 STEPS = {   # placeholder: (from, to)
     'MIMALLOC': ('official', 'omimalloc'), 'C20': ('omimalloc', 'c20'), 'LTO': ('c20', 'lto'),
@@ -120,17 +133,17 @@ lo, hi = min(counts), max(counts)
 s = s.replace('B_NMETRICS', f'{lo}' if lo == hi else f'{lo}–{hi}')
 
 s = s.replace('B_STEP_MIMALLOC_ROWS', chart('official', 'omimalloc', ['JSON.stringify escaped strings 1.8 MiB', 'Buffer.allocUnsafe 256 KiB chunk churn']))
-s = s.replace('B_STEP_LTO_ROWS', chart('c20', 'lto', movers('c20', 'lto')))
+s = s.replace('B_STEP_LTO_ROWS', chart('c20', 'lto', movers('c20', 'lto', skip=['Buffer.copy 128 KiB, storage chunk'])))
 s = s.replace('B_STEP_Z5_ROWS', chart('lto', 'znver5', ['Buffer.swap16 8 KiB holdout'] + movers('lto', 'znver5', skip=['Buffer.swap16 8 KiB holdout'])))
-s = s.replace('B_STEP_C23_ROWS', chart('znver5', 'clang23', movers('znver5', 'clang23')))
+s = s.replace('B_STEP_C23_ROWS', chart('znver5', 'clang23', movers('znver5', 'clang23', skip=['Buffer.copy 128 KiB, storage chunk'])))
 s = s.replace('B_STEP_PGO_ROWS', chart('clang23', 'pgo'))
 s = s.replace('B_STEP_PC_ROWS', chart('pgo', 'pc', drop=['Allocate 2M']))
 V8_EXTRA = [n for n in rows if n.startswith('Buffer.copy') and '1 MiB' not in n] + ['Buffer frame encode/decode 256 B']
 s = s.replace('B_STEP_V8_ROWS', chart('pc', 'v8', V8_EXTRA))
 
-LESSON = [('JSON.parse RPC message', 'JSON.parse RPC message · heavily trained'),
+LESSON = [('JSON.parse RPC message', 'JSON.parse small message · heavily trained'),
           ('JSON.parse 0.5 MiB', 'JSON.parse 0.5 MiB · trained'),
-          ('JSON.stringify RPC message', 'JSON.stringify RPC message · lightly trained'),
+          ('JSON.stringify RPC message', 'JSON.stringify small message · lightly trained'),
           ('JSON.stringify 0.5 MiB', 'JSON.stringify 0.5 MiB · lightly trained'),
           ('gzip level 1', 'gzip level 1 · not in the corpus')]
 lesson = sorted(((delta(find(k), 'clang23', 'pgo'), label) for k, label in LESSON if significant(find(k), 'clang23', 'pgo')), key=lambda t: -t[0])
@@ -156,7 +169,7 @@ s = s.replace('B_PC_HEAP', f'−{(1 - med(heap, "pc") / med(heap, "pgo")) * 100:
 s = s.replace('B_PC_RSS', f'−{(1 - med(rss, "pc") / med(rss, "pgo")) * 100:.0f}%')
 s = s.replace('B_PC_ALLOC', pct(delta(alloc, 'pgo', 'pc')))
 losses = sorted(((delta(rows[n], 'pgo', 'pc'), n) for n in PUBLIC if rows[n]['better'] == 'higher' and delta(rows[n], 'pgo', 'pc') is not None and significant(rows[n], 'pgo', 'pc')), key=lambda t: t[0])[:2]
-s = s.replace('B_PC_COST', ', '.join(f'{html.escape(n)} {pct(d)}' for d, n in losses) + '.')
+s = s.replace('B_PC_COST', ', '.join(f'{html.escape(label(n))} {pct(d)}' for d, n in losses) + '.')
 churn = find('RSS after 512 MiB Buffer churn')
 s = s.replace('B_MIMALLOC_RSS', f'after 512 MiB of Buffer churn it keeps {med(churn, "omimalloc"):.0f} MiB resident vs {med(churn, "official"):.0f} MiB with glibc')
 
@@ -173,7 +186,7 @@ def cell(row, a, b):
     if not significant(row, a, b):
         return f'<td class="num noise">({pct(d)})</td>'   # big but within noise (or not reproduced)
     return f'<td class="num {"win" if d > 0 else "loss"}">{pct(d)}</td>'
-TABLE_ROWS = SHOW + [('Buffer.swap16', 'Buffer.swap16 8 KiB'), ('Buffer.copy 64 B', 'Buffer.copy 64 B'), ('RSS for 2M', 'RSS saved, 2M-object graph'),
+TABLE_ROWS = SHOW + [('Buffer.allocUnsafe 256 KiB', 'Buffer.allocUnsafe 256 KiB churn'), ('Buffer.swap16', 'Buffer.swap16 8 KiB'), ('Buffer.copy 64 B', 'Buffer.copy 64 B'), ('RSS for 2M', 'RSS saved, 2M-object graph'),
                      ('Live heap at full GC', 'live heap saved, 1M records'), ('Full GC pause', 'full GC pause, 1M records')]
 def tune_cell(sub):
     if TUNE is None:
@@ -185,7 +198,7 @@ trs = [f'<tr><td>{html.escape(label)}</td>' + tune_cell(sub) + ''.join(cell(find
 table = ('<table class="data dense-table"><thead><tr><th></th>' + ('<th class="sepr num">+tune</th>' if TUNE else '') + ''.join(f'<th class="num">{h}</th>' for h, _, _ in COLS) +
          '<th class="num">total</th></tr></thead><tbody>\n      ' + '\n      '.join(trs) + '\n    </tbody></table>')
 s = s.replace('B_TABLE', table)
-s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary in a separate A/B, not part of the total' if TUNE else '')
+s = s.replace('B_TUNE_NOTE', ' · +tune: Step 0 flags on the official binary, a separate A/B, not in the total (its startup cost is the --import that sets poolSize)' if TUNE else '')
 
 left = re.findall(r'\bB_[A-Z0-9_]+', s)
 print('left placeholders:', left)
