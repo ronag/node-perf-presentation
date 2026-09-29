@@ -1,0 +1,81 @@
+<!-- OVERHEAD OF ASYNC/AWAIT & PROMISES -->
+<section id="async-overhead" data-chapter="async/await overhead" data-chapter-num="06">
+  <section class="section-header">
+    <h2>Overhead of async/await &amp; Promises</h2>
+    <p>Convenience has a cost</p>
+  </section>
+
+  <section data-core>
+    <h2>What async/await actually does</h2>
+    <pre><code class="language-javascript">async function getUser (id) {
+  const user = await db.findById(id)
+  return user
+}
+// 1. allocates a Promise for the result
+// 2. captures the async context (AsyncLocalStorage, …)
+// 3. suspends the function and saves its frame
+// 4. resumes it from a microtask, even if the value was already there</code></pre>
+    <div class="chart compact" data-unit="ns">
+      <div class="good" data-value="0.65">plain function call</div>
+      <div class="good" data-value="1.35">callback, fired synchronously</div>
+      <div data-value="25.8">queueMicrotask(cb): the enqueue alone</div>
+      <div class="bad" data-value="72.1">new Promise(resolve)</div>
+      <div class="bad" data-value="74.4" data-note="113×">async function + await</div>
+    </div>
+    <p class="accent">“There's no such thing as a free lunch.”</p>
+    <p class="source">benchmarks/async-overhead.mjs · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">⏱ 12:30</aside>
+  </section>
+
+  <section>
+    <h2>The async return pattern</h2>
+    <pre class="big"><code class="language-javascript">// SOMETIMES async, but the caller always pays
+async function resolve (key) {
+  const cached = cache.get(key)
+  if (cached !== undefined) return cached   // already have it, but…
+  return await fetchRemote(key)
+}
+
+const value = await resolve(key)     // a Promise even on a hit</code></pre>
+  </section>
+
+  <section>
+    <h2>The async return pattern: solution</h2>
+    <pre class="big"><code class="language-javascript">function resolve (key) {
+  const cached = cache.get(key)
+  return cached !== undefined
+    ? { async: false, value: cached }
+    : { async: true, value: fetchRemote(key) }
+}
+
+const r = resolve(key)
+const value = r.async ? await r.value : r.value</code></pre>
+    <p class="muted">The result object is removed by escape analysis (0 bytes allocated). Don't reuse one by default: a shared result object measured 4× slower.</p>
+  </section>
+
+  <section>
+    <h2>Async return pattern: real world</h2>
+    <pre><code class="language-javascript">function processMessage (msg) {
+  const r = resolve(msg.key)
+  if (r.async) return r.value.then((v) => handle(msg, v))  // rare
+  handle(msg, r.value)                                      // hot path
+}</code></pre>
+    <div class="stats">
+      <div class="stat bad"><span class="stat-value">100K</span><span class="stat-label">Promises/s at 100K messages/s, without the pattern</span></div>
+      <div class="stat good"><span class="stat-value">5K</span><span class="stat-label">with it, at a 95% hit rate</span></div>
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>Async return pattern vs async/await</h2>
+    <div class="chart" data-unit="µs" data-title="1,000 lookups">
+      <div class="bad" data-value="57.6" data-display="57.6 µs · 260 KB">always async, 100% hits</div>
+      <div class="good" data-value="5.63" data-display="5.63 µs · 0 KB" data-note="10×">async return, 100% hits</div>
+      <div class="bad" data-value="45.6">always async, 95% hits</div>
+      <div class="good" data-value="9.85" data-note="4.6×">async return, 95% hits</div>
+      <div class="bad" data-value="86.7">always async, 50% hits</div>
+      <div class="good" data-value="51.0" data-note="1.7×">async return, 50% hits</div>
+    </div>
+    <p class="source">benchmarks/async-return.mjs · EPYC 9355P · Node 26.10. The higher the hit rate, the bigger the win.</p>
+  </section>
+</section>

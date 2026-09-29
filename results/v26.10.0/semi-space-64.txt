@@ -1,0 +1,5 @@
+execArgv: --expose-gc --max-semi-space-size=64  new_space: 125 MiB
+  throughput   92.51 M objects/s
+  scavenges    1177 (1392 ms)
+  mark-compact 0 (0 ms)
+  GC share     27.8% of wall time

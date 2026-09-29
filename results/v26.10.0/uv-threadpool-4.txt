@@ -1,0 +1,4 @@
+UV_THREADPOOL_SIZE=4
+  fs.read:   348299 ops/s  (6ms)
+  crypto:    1533 ops/s  (1305ms)
+  mixed:     3078 ops/s  (650ms)

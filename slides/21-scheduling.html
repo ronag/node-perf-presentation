@@ -1,0 +1,75 @@
+<!-- SCHEDULING & PRIORITIES -->
+<section id="scheduling" data-chapter="Scheduling &amp; priorities" data-chapter-num="20">
+  <section class="section-header">
+    <h2>Scheduling &amp; Priorities</h2>
+    <p><span class="npm-badge">@nxtedition/scheduler</span></p>
+  </section>
+
+  <section>
+    <h2>The problem</h2>
+    <div class="cols">
+      <div class="card bad"><span class="card-title">One event loop</span>All work competes equally. A background job can starve a latency-sensitive request.</div>
+      <div class="card bad"><span class="card-title">One FIFO thread pool</span>libuv queues fs, crypto and zlib work in order. High priority waits behind low priority.</div>
+    </div>
+    <p class="callout">Node has no built-in notion of task priority.</p>
+  </section>
+
+  <section data-core>
+    <h2>Real world: a network share vs a local SSD</h2>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">50–500 ms</span><span class="stat-label">per SMB read, holding a thread-pool slot the whole time</span></div>
+      <div class="stat good"><span class="stat-value">0.1 ms</span><span class="stat-label">per SSD read, but stuck in the queue behind SMB</span></div>
+    </div>
+    <pre style="margin-top:14px"><code class="language-javascript">const io = new Scheduler({ concurrency: 4 })    // = UV_THREADPOOL_SIZE
+const smb = new Scheduler({ concurrency: 3 })   // cap slow work: always leave a slot
+
+await io.run(() => fs.promises.readFile(ssdPath), 'high')
+await smb.run(() => io.run(() => fs.promises.readFile(smbPath), 'low'))</code></pre>
+    <p class="muted">Leave a fast lane: limit slow I/O so fast requests always find a free thread.</p>
+    <p class="source">Latencies from a production service</p>
+  </section>
+
+  <section>
+    <h2>Priority-based scheduling</h2>
+    <pre class="big"><code class="language-javascript">import { Scheduler } from '@nxtedition/scheduler'
+
+const scheduler = new Scheduler({ concurrency: 4 })
+
+// from different handlers: priority matters only when all slots are busy
+await scheduler.run(() => handleApiRequest(req), 'high')
+await scheduler.run(() => processMessage(msg), 'normal')
+await scheduler.run(() => generateReport(), 'low')
+
+// highest · higher · high · normal · low · lower · lowest</code></pre>
+  </section>
+
+  <section>
+    <h2>Starvation prevention</h2>
+    <p class="lead">A lottery over an incrementing counter: each level gets half of what's left.</p>
+    <div class="share">
+      <span class="lbl">highest</span><span class="bar" style="width:50%"></span><span class="pct">50%</span>
+      <span class="lbl">higher</span><span class="bar" style="width:25%;opacity:.9"></span><span class="pct">25%</span>
+      <span class="lbl">high</span><span class="bar" style="width:12.5%;opacity:.8"></span><span class="pct">12.5%</span>
+      <span class="lbl">normal</span><span class="bar" style="width:6.25%;opacity:.7"></span><span class="pct">6.25%</span>
+      <span class="lbl">low</span><span class="bar" style="width:3.1%;opacity:.6"></span><span class="pct">3.1%</span>
+      <span class="lbl">lower</span><span class="bar" style="width:1.6%;opacity:.5"></span><span class="pct">1.6%</span>
+      <span class="lbl">lowest</span><span class="bar" style="width:0.8%;min-width:4px;opacity:.45"></span><span class="pct">0.8%</span>
+    </div>
+    <p class="callout">Low priority always makes progress; high priority gets exponentially more. (Shares when every level has queued work.)</p>
+  </section>
+
+  <section>
+    <h2>Cross-Worker scheduling</h2>
+    <pre class="big"><code class="language-javascript">// main thread
+const size = Number(process.env.UV_THREADPOOL_SIZE ?? 4)
+const shared = Scheduler.makeSharedState(size)
+const WORKERS = 4
+for (let i = 0; i < WORKERS; i++) {
+  new Worker(new URL('./http-worker.js', import.meta.url), { workerData: { shared } })
+}
+
+// each Worker: one concurrency limit for the whole process
+const scheduler = new Scheduler(workerData.shared)</code></pre>
+    <p class="callout">Without coordination, every Worker queues into the same process-wide FIFO pool and priorities stop meaning anything.</p>
+  </section>
+</section>

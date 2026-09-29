@@ -1,0 +1,34 @@
+clk: ~4.30 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• sync vs callback vs async/await
+------------------------------------------- -------------------------------
+sync function                654.89 ps/iter 412.60 ps █                    
+                      (397.95 ps … 4.06 ns)   3.83 ns █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁
+                  gc(  2.09 ms …   4.82 ms)   0.27  b (  0.09  b…  9.45  b)
+
+callback (sync fire)           1.35 ns/iter   2.63 ns █                    
+                      (419.92 ps … 7.54 ns)   4.03 ns █▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁▁▁▄▁▂
+                  gc(  2.11 ms …   7.22 ms)   3.60  b (  0.11  b… 57.09  b)
+
+async/await                   74.36 ns/iter  68.12 ns  █                   
+                     (61.32 ns … 214.37 ns) 192.41 ns ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂
+                  gc(  2.15 ms …   5.47 ms) 524.44  b (504.20  b…934.57  b)
+
+callback + queueMicrotask     25.78 ns/iter  24.20 ns  █                   
+                      (21.01 ns … 68.42 ns)  51.44 ns ▄██▂▁▁▁▁▂▂▁▂▁▁▁▂▁▁▁▁▂
+                  gc(  3.14 ms …  27.54 ms) 206.91  b (200.12  b…276.14  b)
+
+new Promise(resolve => ...)   72.10 ns/iter  72.18 ns █ ▃▂                 
+                     (68.24 ns … 197.27 ns)  99.47 ns █▆██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.16 ms …   6.44 ms) 768.78  b (768.34  b…778.35  b)
+
+summary
+  sync function
+   2.06x faster than callback (sync fire)
+   39.36x faster than callback + queueMicrotask
+   110.1x faster than new Promise(resolve => ...)
+   113.55x faster than async/await

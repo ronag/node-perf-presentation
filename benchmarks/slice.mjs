@@ -1,4 +1,6 @@
-// Benchmark: Buffer vs @nxtedition/slice PoolAllocator
+// Benchmark: Buffer vs @nxtedition/slice (2.x) PoolAllocator
+// realloc(n) returns a PoolSlice; realloc(slice, n) resizes (in place within a
+// power-of-two bucket); realloc(slice, 0) frees the slot for reuse.
 import { run, bench, group, summary, do_not_optimize } from 'mitata'
 import { Slice, PoolAllocator } from '@nxtedition/slice'
 
@@ -11,7 +13,7 @@ summary(() => {
     }).gc('inner')
 
     bench('PoolAllocator.realloc(1024)', () => {
-      const s = allocator.realloc(new Slice(), 1024)
+      const s = allocator.realloc(1024)
       do_not_optimize(s)
       allocator.realloc(s, 0)
     }).gc('inner')
@@ -25,7 +27,7 @@ summary(() => {
     }).gc('inner')
 
     bench('PoolAllocator.realloc(8192)', () => {
-      const s = allocator.realloc(new Slice(), 8192)
+      const s = allocator.realloc(8192)
       do_not_optimize(s)
       allocator.realloc(s, 0)
     }).gc('inner')
@@ -41,7 +43,7 @@ summary(() => {
     }).gc('inner')
 
     bench('new Slice(buffer, 0, 64)', () => {
-      do_not_optimize(new Slice(buf, 0, 64, 64))
+      do_not_optimize(new Slice(buf, 0, 64))
     }).gc('inner')
   })
 })
@@ -55,7 +57,7 @@ summary(() => {
     }).gc('inner')
 
     bench('PoolAllocator churn', () => {
-      const s = allocator.realloc(new Slice(), 1024)
+      const s = allocator.realloc(1024)
       allocator.realloc(s, 2048)
       allocator.realloc(s, 1024)
       do_not_optimize(s)
@@ -66,12 +68,12 @@ summary(() => {
 
 // Isolate just the realloc — pre-allocate outside the loop
 {
-  const s = allocator.realloc(new Slice(), 512)
+  const s = allocator.realloc(600)
   summary(() => {
     group('realloc in-place (same bucket, no GC)', () => {
-      bench('PoolAllocator realloc 512→1000', () => {
-        allocator.realloc(s, 1000) // Same bucket (1024), just update length
-        allocator.realloc(s, 512)  // Back to 512, still same bucket
+      bench('PoolAllocator realloc 600→1000', () => {
+        allocator.realloc(s, 1000) // same 1024 B bucket: only the length changes
+        allocator.realloc(s, 600)  // and back
         do_not_optimize(s)
       })
     })
@@ -90,7 +92,7 @@ summary(() => {
     bench('PoolAllocator batch 100', () => {
       const slices = []
       for (let i = 0; i < 100; i++) {
-        slices.push(allocator.realloc(new Slice(), 1024))
+        slices.push(allocator.realloc(1024))
       }
       do_not_optimize(slices)
       for (const s of slices) allocator.realloc(s, 0)

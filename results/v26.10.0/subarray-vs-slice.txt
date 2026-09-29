@@ -1,0 +1,24 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• subarray vs slice (split header + body)
+------------------------------------------- -------------------------------
+Buffer.subarray()             34.91 ns/iter  32.15 ns █                    
+                     (29.06 ns … 237.14 ns) 155.76 ns █▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.09 ms …   5.01 ms) 208.38  b (208.19  b…218.82  b)
+
+Slice (mutate)                 1.24 ns/iter 561.52 ps █                    
+                      (532.23 ps … 5.76 ns)   5.68 ns █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▁▁▁
+                  gc(  2.12 ms …   4.02 ms)   0.25  b (  0.11  b… 24.25  b)
+
+Slice (new)                    1.02 ns/iter 664.06 ps █                    
+                     (649.41 ps … 10.49 ns)   4.53 ns █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁▁
+                  gc(  2.12 ms …   5.38 ms)   1.65  b (  0.11  b… 97.86  b)
+
+summary
+  Slice (new)
+   1.22x faster than Slice (mutate)
+   34.23x faster than Buffer.subarray()

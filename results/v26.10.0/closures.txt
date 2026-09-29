@@ -1,0 +1,33 @@
+clk: ~4.31 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                      avg (min … max) p75 / p99    (min … top 1%)
+---------------------------------------------- -------------------------------
+• closure vs opaque
+---------------------------------------------- -------------------------------
+closure (new function per call)   2.29 ns/iter   1.59 ns █                    
+                          (1.54 ns … 46.80 ns)  10.85 ns █▁▁▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁
+                     gc(  2.10 ms …   4.35 ms)   8.35  b (  4.11  b…145.23  b)
+
+opaque (static function + data)   4.01 ns/iter   3.27 ns █                    
+                           (3.23 ns … 8.16 ns)   7.94 ns █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▂▁
+                     gc(  2.14 ms …   4.57 ms)   6.36  b (  4.11  b… 22.73  b)
+
+summary
+  closure (new function per call)
+   1.75x faster than opaque (static function + data)
+
+• batch 1000 callbacks
+---------------------------------------------- -------------------------------
+1000 closures                     5.38 µs/iter   4.95 µs █                    
+                          (4.45 µs … 14.43 µs)  13.15 µs █▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁▁▁▁
+                     gc(  2.14 ms …   4.04 ms) 126.24 kb (122.14 kb…164.75 kb)
+
+1000 opaque calls               276.86 ns/iter 268.00 ns █▃▂                  
+                       (257.10 ns … 392.21 ns) 390.89 ns ███▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▄▂
+                     gc(  2.19 ms …   4.62 ms)   0.13  b (  0.11  b…  3.70  b)
+
+summary
+  1000 opaque calls
+   19.42x faster than 1000 closures

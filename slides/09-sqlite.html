@@ -1,0 +1,86 @@
+<!-- SQLITE -->
+<section id="sqlite" data-chapter="SQLite" data-chapter-num="08">
+  <section class="section-header">
+    <h2>SQLite</h2>
+    <p><code>node:sqlite</code> is synchronous, and that's the point</p>
+  </section>
+
+  <section data-core>
+    <h2><code>Database</code>: prepare once, call synchronously</h2>
+    <pre><code class="language-javascript">import { Database } from 'node:sqlite'
+
+const db = new Database('cache.db', { timeout: 10 })
+const byId = db.prepare('SELECT * FROM users WHERE id = ?')   // once
+byId.get(42)                                                   // no Promise, no thread pool</code></pre>
+    <div class="chart" data-unit="µs" data-title="SELECT one row by primary key">
+      <div class="bad" data-value="4.36">db.prepare(sql) on every call</div>
+      <div class="good" data-value="1.33" data-note="3.3×">reused statement</div>
+      <div class="good" data-value="1.49" data-note="2.9×">db.createTagStore(): an LRU of statements</div>
+      <div class="good" data-value="1.18" data-note="3.7×">reused + setReturnArrays(true)</div>
+    </div>
+    <p class="source">benchmarks/sqlite-pragmas.mjs · SQLite 3.53 · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">⏱ 14:30</aside>
+  </section>
+
+  <section data-core>
+    <h2>Choose your durability deliberately</h2>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="INSERT one 256 B row, one writer (many Workers: next slide)">
+      <div class="bad" data-value="215.7">default: rollback journal, synchronous=FULL</div>
+      <div data-value="25.9" data-note="8×">journal_mode=WAL, synchronous=FULL</div>
+      <div class="good" data-value="11.5" data-note="19×">journal_mode=WAL, synchronous=NORMAL</div>
+      <div class="good" data-value="3.88" data-note="56×">journal_mode=WAL, synchronous=OFF</div>
+    </div>
+    <p class="muted"><strong>NORMAL</strong> in WAL mode never corrupts; a power cut may lose the last commits. <strong>OFF</strong> is for data you can rebuild: caches, scratch tables.</p>
+    <p class="callout">Batch writes: 1,000 rows per transaction (WAL + NORMAL) is <strong>1.36 µs</strong> per row.</p>
+    <p class="source">benchmarks/sqlite-pragmas.mjs · NVMe RAID1 (Samsung PM9A3) · EPYC 9355P · Node 26.10 · log scale</p>
+  </section>
+
+  <section data-core>
+    <h2>Contending writers: seconds-long stalls</h2>
+    <p class="lead">One writer per file: extra writers sleep and retry in SQLite's busy handler, with no queue and no fairness. Throughput drops or stays flat; the tail explodes.</p>
+    <div class="chart compact" data-unit="rows/s" data-scale="log" data-title="INSERT one 256 B row per statement, total across writers · median of 3 runs · log scale">
+      <div data-value="4754" data-display="4.8K">rollback journal, FULL · 1 writer</div>
+      <div class="bad" data-value="4088" data-display="4.1K" data-note="−14%">rollback journal, FULL · 8 writers</div>
+      <div data-value="38854" data-display="39K">WAL, FULL · 1 writer</div>
+      <div class="bad" data-value="32626" data-display="33K" data-note="−16%">WAL, FULL · 8 writers</div>
+      <div data-value="88777" data-display="89K">WAL, NORMAL · 1 writer</div>
+      <div class="neutral" data-value="92796" data-display="93K" data-note="≈ flat">WAL, NORMAL · 8 writers</div>
+      <div data-value="255428" data-display="255K">WAL, OFF · 1 writer</div>
+      <div class="bad" data-value="204385" data-display="204K" data-note="−20%">WAL, OFF · 8 writers</div>
+    </div>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">2.2–3.6 s</span><span class="stat-label">the slowest insert with 8 writers, in every journal mode: one writer can starve for the whole run (p99: under 0.3 ms)</span></div>
+      <div class="card warn"><span class="card-title">The busy handler sleeps</span>A waiting writer sleeps and retries until <code>timeout</code>, blocking its thread.</div>
+    </div>
+    <p class="source">benchmarks/sqlite-contention.mjs · 3 × 3 s per case, busy timeout 5 s · NVMe RAID1 (Samsung PM9A3) · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">Why WAL + NORMAL stays flat: its commits don't fsync, but checkpoints do, and a lone writer pays for them. Other writers keep appending while one checkpoints. With auto-checkpoint off, one writer does 116K rows/s and 8 writers 88K (−25%), like the other modes. With 2 writers it swings between 91K and 119K from run to run. Fix: funnel writes through one connection, or shard (next slide).</aside>
+  </section>
+
+  <section>
+    <h2>A pragma recipe for a cache</h2>
+    <pre class="big"><code class="language-sql">PRAGMA journal_mode = WAL;          -- readers never block the writer
+PRAGMA synchronous = OFF;           -- rebuildable data: no fsync
+PRAGMA wal_autocheckpoint = 10000;  -- checkpoint less often
+PRAGMA mmap_size = 268435456;       -- 256 MiB: map the file, no read() copies
+PRAGMA cache_size = -32768;         -- 32 MiB (negative = KiB)
+PRAGMA max_page_count = …;          -- hard size cap → SQLITE_FULL → evict</code></pre>
+    <div class="cols">
+      <div class="card warn"><span class="card-title"><code>BEGIN IMMEDIATE</code></span>Take the write lock up front. A deferred transaction that reads, then writes, can fail at once with <code>SQLITE_BUSY</code>: the busy timeout doesn't help.</div>
+      <div class="card bad"><span class="card-title">Read the pragma back</span><code>journal_mode = OFF</code> is silently refused unless you open with <code>{ defensive: false }</code>.</div>
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>One writer per file: shard it</h2>
+    <pre><code class="language-javascript">const db = shards[hash(key) % shards.length]   // own file, own write lock
+// every shard: journal_mode=WAL, synchronous=OFF, writes batched per BEGIN IMMEDIATE</code></pre>
+    <div class="chart" data-unit="ops/s" data-title="12 Workers, cold writes (a single thread: 125K ops/s)">
+      <div class="bad" data-value="148000" data-display="148K">1 file: 1.18× a single thread</div>
+      <div data-value="198000" data-display="198K" data-note="+34%">2 shards</div>
+      <div class="good" data-value="239000" data-display="239K" data-note="+62%">4 shards</div>
+      <div class="good" data-value="256000" data-display="256K" data-note="+73%">8 shards</div>
+    </div>
+    <p class="muted">Plus an advisory lock per shard in a <code>SharedArrayBuffer</code> (<code>Atomics.compareExchange</code>): a Worker that finds a shard busy defers its flush instead of hitting <code>SQLITE_BUSY</code>.</p>
+    <p class="source">benchmarks/sqlite-cache-shards.mjs (from @nxtedition/cache) · busy timeout 10 ms · EPYC 9355P, 12 pinned cores · Node 26.10</p>
+  </section>
+</section>

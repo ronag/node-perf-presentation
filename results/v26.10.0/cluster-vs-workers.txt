@@ -1,0 +1,42 @@
+# benchmarks/cluster-vs-workers.mjs, 3 runs, tv2k-srv4 (EPYC 9355P), node:26.10.0 in Docker
+# autocannon latency is not meaningful with Connection: close (it includes reconnect waits)
+== run 1
+node v26.10.0, 4 server threads on cpus 16-19, autocannon on 24-31: 128 connections, 10 s after a 3 s warm-up
+
+keep-alive
+  one process, one thread              122825 req/s  p50    1 ms  p99    1 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        484275 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   743 MiB
+  cluster + reusePort                  487412 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   665 MiB
+  Workers + reusePort, one process     486784 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   415 MiB
+a new connection per request
+  one process, one thread               51670 req/s  p50 2736 ms  p99 5021 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        102029 req/s  p50 2507 ms  p99 5276 ms  errors 0  RSS   743 MiB
+  cluster + reusePort                  120813 req/s  p50 2679 ms  p99 5249 ms  errors 0  RSS   665 MiB
+  Workers + reusePort, one process     117664 req/s  p50 2519 ms  p99 5183 ms  errors 0  RSS   415 MiB
+== run 2
+node v26.10.0, 4 server threads on cpus 16-19, autocannon on 24-31: 128 connections, 10 s after a 3 s warm-up
+
+keep-alive
+  one process, one thread              123290 req/s  p50    1 ms  p99    1 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        490415 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   739 MiB
+  cluster + reusePort                  489321 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   666 MiB
+  Workers + reusePort, one process     486707 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   421 MiB
+a new connection per request
+  one process, one thread               51770 req/s  p50 2765 ms  p99 5267 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        102086 req/s  p50 2477 ms  p99 5188 ms  errors 0  RSS   739 MiB
+  cluster + reusePort                  116800 req/s  p50 2645 ms  p99 5371 ms  errors 0  RSS   666 MiB
+  Workers + reusePort, one process     118080 req/s  p50 2725 ms  p99 5343 ms  errors 0  RSS   421 MiB
+== run 3
+node v26.10.0, 4 server threads on cpus 16-19, autocannon on 24-31: 128 connections, 10 s after a 3 s warm-up
+
+keep-alive
+  one process, one thread              122621 req/s  p50    1 ms  p99    1 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        489996 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   743 MiB
+  cluster + reusePort                  490829 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   676 MiB
+  Workers + reusePort, one process     484582 req/s  p50    0 ms  p99    0 ms  errors 0  RSS   440 MiB
+a new connection per request
+  one process, one thread               52147 req/s  p50 2748 ms  p99 5295 ms  errors 0  RSS   149 MiB
+  cluster (primary round-robin)        103846 req/s  p50 2481 ms  p99 4884 ms  errors 0  RSS   743 MiB
+  cluster + reusePort                  116589 req/s  p50 2639 ms  p99 5155 ms  errors 0  RSS   676 MiB
+  Workers + reusePort, one process     117805 req/s  p50 2603 ms  p99 5241 ms  errors 0  RSS   440 MiB
+

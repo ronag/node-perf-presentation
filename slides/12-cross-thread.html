@@ -1,0 +1,66 @@
+<!-- CROSS-THREAD COMMUNICATION -->
+<section id="cross-thread" data-chapter="Cross-thread communication" data-chapter-num="11">
+  <section class="section-header">
+    <h2>Cross-Thread Communication</h2>
+    <p><span class="npm-badge">@nxtedition/shared</span></p>
+  </section>
+
+  <section>
+    <h2>Why MessagePort is slow</h2>
+    <pre class="big"><code class="language-javascript">port.postMessage({ type: 'log', data: largeObject })
+// 1. structured clone: a deep copy  2. queue it across the boundary
+// 3. deserialize into new objects   4. the receiver's copy is new garbage
+
+port.postMessage(u8, [u8.buffer])
+// transfer: no copy, but the sender's buffer is detached, a new wrapper
+// is created, you can only move, never share, and pooled Buffers throw</code></pre>
+  </section>
+
+  <section>
+    <h2>A ring buffer: data inline, cache-friendly</h2>
+    <div class="diagram-box">
+      <div class="ring-segment">
+        <div class="ring-title">state · write index at byte 0, read index at byte 64: separate cache lines, no false sharing</div>
+      </div>
+      <div class="ring-segment">
+        <div class="ring-title">data · SharedArrayBuffer, power-of-two size, double-mapped, so a record crossing the end stays contiguous</div>
+        <div class="ring-cells">
+          <div class="cell len">len₁</div><div class="cell data">payload₁ (inline)</div>
+          <div class="cell len">len₂</div><div class="cell data">payload₂</div>
+          <div class="cell len">len₃</div><div class="cell data">payload₃</div>
+        </div>
+        <div class="ring-pointers"><span>↑ read</span><span>↑ write</span></div>
+      </div>
+    </div>
+    <p class="callout">No pointers, no per-message objects, no GC. Reads are sequential, so the prefetcher hides the cross-core transfer.</p>
+  </section>
+
+  <section>
+    <h2>API</h2>
+    <pre class="big"><code class="language-javascript">import { Writer, Reader } from '@nxtedition/shared'
+
+// writer thread
+const w = new Writer(8 * 1024 * 1024)
+new Worker(new URL('./reader.js', import.meta.url), { workerData: w.handle })
+w.writeSync(buf.length, (d, b) => d.byteOffset + b.copy(d.buffer, d.byteOffset), buf)
+
+// reader thread: zero-copy views into shared memory
+const r = new Reader(workerData)
+r.readSome(({ buffer, byteOffset, byteLength }) => {
+  handle(buffer, byteOffset, byteLength)
+})</code></pre>
+  </section>
+
+  <section data-core>
+    <h2>Ring buffer vs MessagePort</h2>
+    <div class="chart" data-unit="M msg/s" data-title="main thread → Worker, 1M messages, 64 B">
+      <div class="bad" data-value="1.09">MessagePort.postMessage</div>
+      <div class="good" data-value="36.97" data-display="37.0 M msg/s" data-note="34×">SharedArrayBuffer ring buffer</div>
+    </div>
+    <div class="chart" data-unit="M msg/s" data-title="1 KiB messages">
+      <div class="bad" data-value="0.77">MessagePort.postMessage</div>
+      <div class="good" data-value="28.07" data-note="36×">SharedArrayBuffer ring buffer</div>
+    </div>
+    <p class="source">benchmarks/cross-thread.mjs · 4 pinned cores on one CCD · the ring reader spins, the port reader is event-driven · EPYC 9355P · Node 26.10 · median of 5</p>
+  </section>
+</section>

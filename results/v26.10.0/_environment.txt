@@ -1,0 +1,2 @@
+v26.10.0 v8=14.6.202.34-node.34
+Model name:                              AMD EPYC 9355P 32-Core Processor

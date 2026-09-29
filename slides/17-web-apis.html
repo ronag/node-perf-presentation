@@ -1,0 +1,47 @@
+<!-- WEB APIs: THE COMPATIBILITY TAX -->
+<section id="web-apis" data-chapter="Web APIs" data-chapter-num="16">
+  <section class="section-header">
+    <h2>Web APIs: The Compatibility Tax</h2>
+    <p>Spec compliance has a cost. Know your alternatives.</p>
+  </section>
+
+  <section data-core>
+    <h2>URL parsing</h2>
+    <div class="chart" data-unit="ns" data-title="parse a 60-char request target, a fresh string per request, base from the Host header">
+      <div class="bad" data-value="337">new URL(target, `http://${host}`)</div>
+      <div data-value="346">URL.parse(target, base)</div>
+      <div data-value="301">url.parse(target) · legacy, deprecated</div>
+      <div data-value="262" data-note="1.3×">request-target · RFC 7230, HTTP only</div>
+      <div class="good" data-value="27.9" data-note="12×">indexOf('?') + slice</div>
+    </div>
+    <p class="muted">Swapping parsers barely matters: request-target is 1.3× faster at 60 chars, slower at 20 (331 vs 279 ns) and even at 200. If you only need the path and the query, split them yourself.</p>
+    <p class="source">benchmarks/url.mjs · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">⏱ 21:00</aside>
+  </section>
+
+  <section>
+    <h2>HTTP client: <code>fetch</code> vs <code>undici</code></h2>
+    <div class="chart" data-unit="req/s" data-title="50 connections, pipelining depth 10">
+      <div class="bad" data-value="5438">fetch</div>
+      <div class="good" data-value="16851" data-note="3.1×">undici.request</div>
+      <div class="good" data-value="20786" data-note="3.8×">undici.dispatch</div>
+    </div>
+    <p class="muted"><code>fetch</code> is undici plus the Fetch spec layer: <code>Request</code>/<code>Response</code> objects, <code>Headers</code>, and bodies as web streams.</p>
+    <p class="source">undici README benchmarks, Node 24.14.1</p>
+  </section>
+
+  <section>
+    <h2>Web streams vs Node streams</h2>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="create one stream (per-request cost) · log scale">
+      <div class="bad" data-value="6.07" data-display="6.07 µs · 2.1 KiB">new ReadableStream</div>
+      <div class="good" data-value="0.0196" data-display="19.6 ns · 377 B" data-note="310×">new Readable</div>
+    </div>
+    <div class="chart" data-unit="µs" data-title="500 × 64 KiB">
+      <div class="bad" data-value="34.7">Web: consume (for await)</div>
+      <div class="good" data-value="17.2" data-note="2.0×">Node: consume ('data' events)</div>
+      <div class="bad" data-value="61.9">Web: write</div>
+      <div class="good" data-value="13.3" data-note="4.7×">Node: write</div>
+    </div>
+    <p class="source">benchmarks/streams.mjs · EPYC 9355P · Node 26.10. <code>await writer.write()</code> costs a microtask per chunk.</p>
+  </section>
+</section>

@@ -1,0 +1,157 @@
+<!-- BUILD YOUR OWN NODE -->
+<section id="custom-builds" data-chapter="Build your own Node" data-chapter-num="03">
+  <section class="section-header">
+    <h2>Build Your Own Node</h2>
+    <p>The runtime itself is a performance knob</p>
+  </section>
+
+  <section data-core>
+    <h2>The official binary runs on every x86-64 CPU since 2003</h2>
+    <p class="lead">Great for compatibility. It leaves speed and memory on the table. Tune what you have, then rebuild. Every step benchmarked on its own:</p>
+    <div class="flow steps-grid fragment fade-up">
+      <div class="step"><b>0 · Tune</b>flags and env</div>
+      <div class="step"><b>1 · Allocator</b>mimalloc, no rebuild</div>
+      <div class="step"><b>2 · LTO</b>whole program</div>
+      <div class="step"><b>3 · -march</b>Zen 5: AVX-512</div>
+      <div class="step"><b>4 · Clang 23</b>a newer compiler</div>
+      <div class="step"><b>5 · PGO</b>our workloads</div>
+      <div class="step"><b>6 · Pointer compr.</b>32-bit pointers</div>
+      <div class="step"><b>7 · Patch V8</b>your own runtime</div>
+    </div>
+    <p class="source">Same Node 26.10.0 source for every build. Built and measured on an AMD EPYC 9355P (Zen 5): 14 workload groups, median of interleaved runs, pinned cores.</p>
+    <aside class="notes">⏱ 1:00</aside>
+  </section>
+
+  <section class="statement">
+    <div class="quote">“Robert… why did you change the defaults?”</div>
+    <div class="quote-by">— Jesper, also every single time</div>
+    <p class="lead" style="margin-top:28px">Defaults are set by the people who understand them best, for maximum compatibility.
+      Your workload isn't everyone's: measure, understand, then decide.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 0: tune the Node you have</h2>
+    <p class="lead">No rebuild: flags, environment variables and one line of code.</p>
+    <table class="data">
+      <thead><tr><th>Knob</th><th>Default</th><th>Tuned</th><th class="num">Effect</th></tr></thead>
+      <tbody>
+        <tr class="fragment fade-up"><td><code>--max-semi-space-size=64</code></td><td>scales with RAM</td><td>64 MiB</td><td class="num win">+28% allocation-heavy throughput</td></tr>
+        <tr class="fragment fade-up"><td><code>Buffer.poolSize = 1 &lt;&lt; 20</code></td><td>64 KiB</td><td>1 MiB</td><td class="num win">16 KiB allocUnsafe 4.2×, but 256 KiB chunks 2.4× slower</td></tr>
+        <tr class="fragment fade-up"><td><code>UV_THREADPOOL_SIZE=16</code></td><td>4 threads</td><td>16</td><td class="num win">3–3.5× blocking crypto / mixed work (16 cores)</td></tr>
+      </tbody>
+    </table>
+    <p class="source">benchmarks/semi-space.mjs, poolsize-churn.mjs, uv-threadpool.mjs · EPYC 9355P · Node 26.10 · a 256 KiB pool keeps most of the win (2.8×) without the slowdown</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 1: a better allocator</h2>
+    <pre><code class="language-bash">LD_PRELOAD=/usr/local/lib/libmimalloc.so MIMALLOC_PURGE_DELAY=1000 node app.js   # no rebuild</code></pre>
+    <div class="chart compact" data-signed data-unit="%" data-title="official node:26.10.0: glibc malloc → mimalloc via LD_PRELOAD (same binary) · + is better · changes within noise are not shown">
+      B_STEP_MIMALLOC_ROWS
+    </div>
+    <p class="muted">The purge delay is a dial: a 1 s delay is fast, but B_MIMALLOC_RSS. Purging on free saves RSS and costs throughput.</p>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_MIMALLOC</strong> (RSS after churn, 9× higher, left out) · EPYC 9355P · Node 26.10 · median of 8 interleaved runs</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 2: link-time optimization (LTO)</h2>
+    <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
+    <div class="chart compact" data-signed data-unit="%" data-title="our build with the official compiler (Clang 20.1) → + full LTO · + is better">
+      B_STEP_LTO_ROWS
+    </div>
+    <p class="muted">On its own it's a wash: inlining across files cut JSON.parse's instructions by 3%, but the bigger hot path misses the instruction cache 29× more often, which eats the gain. PGO lays hot code out again (step 5).</p>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_LTO</strong> · our Clang 20 build vs the official binary: B_GEO_C20 (the control) · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">Costs: ~5.5 GiB RSS per link and a slow rebuild loop. perf stat, small-object JSON.parse, Clang 20 without vs with LTO: instructions per parse −3.3% (8,849 → 8,554), IPC 5.35 → 5.15, front-end idle 2.6% → 7.1%, L1 I-cache misses 0.24 → 6.8 per parse. On the 1.8 MiB escaped payload the instruction count is identical and IPC drops 2%: layout, not codegen.</aside>
+  </section>
+
+  <section data-core>
+    <h2>Step 3: compile for the CPU you run on</h2>
+    <pre><code class="language-bash">-march=znver5 -mtune=znver5 -mno-gather   # Zen 5: AVX-512, VNNI, GFNI, VPCLMULQDQ</code></pre>
+    <div class="chart compact" data-signed data-unit="%" data-title="+ LTO → + -march=znver5 (same compiler, same flags otherwise) · + is better">
+      B_STEP_Z5_ROWS
+    </div>
+    <p class="muted"><strong><code>-mtune</code> is free; <code>-march</code> is a contract:</strong> Zen 5 only, SIGILL anywhere else. Portable: <code>x86-64-v3</code> / <code>-v4</code>.</p>
+    <p class="muted">B_GATHER_TEXT</p>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_Z5</strong> · EPYC 9355P · Node 26.10 · median of 8 interleaved runs</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 4: a newer compiler</h2>
+    <pre><code class="language-bash">CC=clang-23 CXX=clang++-23 ./configure   # the official 26.10 binary: Clang 20.1</code></pre>
+    <div class="chart compact" data-signed data-unit="%" data-title="Clang 20 + LTO + znver5 → the same with Clang 23 (both -mno-gather) · + is better">
+      B_STEP_C23_ROWS
+    </div>
+    <p class="muted">B_C23_TEXT</p>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_C23</strong> · EPYC 9355P · Node 26.10 · median of 8 interleaved runs</p>
+    <aside class="notes">Why -mno-gather: Clang 23's SLP vectorizer turns zlib's CRC32 table loop into AVX-512 gathers, which are microcoded and slow on Zen. LLVM's cost model treats "has AVX-512" as "has fast gathers" (upstream: PR #206506 closed unmerged, PR #212997 open). -fno-slp-vectorize also fixes it but turns SLP off everywhere. Even without gathers, Clang 23 runs that loop ~10% slower than Clang 20. Trap: configure doesn't pass your CFLAGS to V8, so inject flags with a compiler wrapper and check they landed (we count zmm and vpgather instructions in the binary).</aside>
+  </section>
+
+  <section data-core>
+    <h2>Step 5: profile-guided optimization (PGO)</h2>
+    <div class="flow">
+      <div class="step"><b>1 · Instrument</b><code>-fprofile-generate</code><br><code>-fprofile-update=atomic</code> (threads)</div>
+      <div class="arrow">→</div>
+      <div class="step"><b>2 · Train, 120 s</b>12 workloads: JSON, Buffers, HTTP, Workers + reusePort, streams, TLS, GC, …</div>
+      <div class="arrow">→</div>
+      <div class="step"><b>3 · Merge + rebuild</b><code>llvm-profdata merge --weighted-input</code>, <code>-fprofile-use</code></div>
+    </div>
+    <div class="chart compact" data-signed data-unit="%" data-title="+ Clang 23 → + PGO · + is better">
+      B_STEP_PGO_ROWS
+    </div>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_PGO</strong> · EPYC 9355P · Node 26.10 · median of 8 interleaved runs</p>
+  </section>
+
+  <section data-core>
+    <h2>PGO: you get what you train</h2>
+    <p class="lead">It optimizes what the training corpus exercises, and can pessimize what it doesn't.</p>
+    <div class="chart" data-signed data-unit="%" data-title="our PGO step, by how well the corpus covers it · + is better">
+      B_PGO_LESSON_ROWS
+    </div>
+    <div class="cols">
+      <div class="stat bad"><span class="stat-value">−93%</span><span class="stat-label"><code>buf.swap16()</code> when the corpus never called it (the extreme case)</span></div>
+      <div class="stat good"><span class="stat-value">15.6×</span><span class="stat-label">the bad profile after adding a few swaps to the corpus: back to no-PGO speed</span></div>
+    </div>
+    <p class="source">Chart: this A/B, EPYC 9355P, Node 26.10 · swap16: an earlier Clang IR-PGO experiment, Node 26.5 (not in results/)</p>
+    <aside class="notes">Weight the corpus like production traffic. A JSON-only profile made escaped strings slower. Retrain on every Node bump; V8's Torque builtins aren't reached by Clang PGO.</aside>
+  </section>
+
+  <section data-core>
+    <h2>Step 6: pointer compression, half the heap</h2>
+    <pre><code class="language-bash">./configure --experimental-enable-pointer-compression   # 32-bit tagged pointers</code></pre>
+    <div class="stats">
+      <div class="stat good"><span class="stat-value">B_PC_HEAP</span><span class="stat-label">live V8 heap, 1M records</span></div>
+      <div class="stat good"><span class="stat-value">B_PC_RSS</span><span class="stat-label">RSS, 2M-object graph</span></div>
+      <div class="stat good"><span class="stat-value">B_PC_ALLOC</span><span class="stat-label">allocation throughput</span></div>
+    </div>
+    <div class="chart compact" data-signed data-unit="%" data-title="+ PGO → + pointer compression, other workloads · + is better" style="margin-top:14px">
+      B_STEP_PC_ROWS
+    </div>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_PC</strong> · EPYC 9355P · Node 26.10 · median of 8 interleaved runs</p>
+  </section>
+
+  <section>
+    <h2>Pointer compression: the fine print</h2>
+    <div class="cols-3">
+      <div class="card warn"><span class="card-title">4 GiB heap per isolate</span>Each Worker gets its own cage, so a process with Workers can still use more in total.</div>
+      <div class="card bad"><span class="card-title">A different addon ABI</span>Prebuilt V8-API (NAN) addons crash: rebuild them against your headers (<code>--nodedir</code>). N-API addons work unchanged.</div>
+      <div class="card warn"><span class="card-title">Some workloads get slower</span>B_PC_COST Measure yours.</div>
+    </div>
+    <p class="callout">Memory is what you pay for. This is the single biggest memory win we have, and production runs it.</p>
+  </section>
+
+  <section data-core>
+    <h2>Step 7: customize V8</h2>
+    <p class="lead">A ~90-line V8 patch adds <code>v8::ArrayBufferView::CopyArrayBufferViewBytes</code>, so <code>buf.copy()</code> copies between views without materializing their ArrayBuffers.</p>
+    <div class="chart compact" data-signed data-unit="%" data-title="+ pointer compression → + the V8 patch · + is better">
+      B_STEP_V8_ROWS
+    </div>
+    <p class="muted">It's your runtime: small, targeted patches (and upstreaming them) are fair game. Rebase them on every release, and run the full test suite.</p>
+    <p class="source">Geomean over B_NMETRICS workload metrics: <strong>B_GEO_V8</strong> · EPYC 9355P · Node 26.10 · median of 8 interleaved runs · proposed in nodejs/node#63892 (closed: V8 API changes must land in V8 first)</p>
+  </section>
+
+  <section data-core>
+    <h2>All together: step by step</h2>
+    B_TABLE
+    <p class="source">Median of 8 interleaved runs · EPYC 9355P · Node 26.10.0 · + is better · each column adds one step; the columns multiply to the total (official → step 7) · +LTO includes rebuilding with our toolchain (alone B_GEO_C20) · grey: under 3% · (x%): noise, or not reproduced by a second PGO chainB_TUNE_NOTE</p>
+  </section>
+</section>

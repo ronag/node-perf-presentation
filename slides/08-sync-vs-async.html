@@ -1,0 +1,35 @@
+<!-- SYNC VS ASYNC METHODS -->
+<section id="sync-vs-async" data-chapter="Sync methods" data-chapter-num="07">
+  <section class="section-header">
+    <h2>Sync Methods</h2>
+    <p>When not to leave the thread</p>
+  </section>
+
+
+  <section data-core>
+    <h2>Sync vs async: 12–13×, on Linux and macOS</h2>
+    <div class="cols">
+      <div class="card info"><span class="card-title">fs.read(fd, buf, 0, len, 0, cb)</span>Thread pool hop + syscall + callback + async context</div>
+      <div class="card good"><span class="card-title">fs.readSync(fd, buf, 0, len, 0)</span>Syscall on the calling thread</div>
+    </div>
+    <div class="chart" data-unit="µs" data-scale="log" data-title="read 4 KiB from the page cache, one at a time · log scale">
+      <div class="good" data-value="0.377">fs.readSync · EPYC / Linux</div>
+      <div class="bad" data-value="4.65" data-note="12×">fs.read · EPYC / Linux</div>
+      <div class="good" data-value="0.521">fs.readSync · M3 Pro / macOS</div>
+      <div class="bad" data-value="6.97" data-note="13×">fs.read · M3 Pro / macOS</div>
+    </div>
+    <p class="source">benchmarks/fs-sync-vs-async.mjs · Node 26.10 on both · 4 MiB reads: 85 vs 231 µs on Linux (2.7×), 480 vs 570 µs on macOS (1.2×)</p>
+    <aside class="notes">The async price is a thread-pool round trip: about 4–7 µs on both OSes. An older Node 25.3 run on macOS showed 190×; Node 26.10 on an M3 Pro measures 13×.</aside>
+  </section>
+
+  <section>
+    <h2>When is sync OK?</h2>
+    <div class="cols-4">
+      <div class="card good"><span class="card-title">Worker threads</span>No main event loop to block</div>
+      <div class="card good"><span class="card-title">Startup</span>No requests to block yet</div>
+      <div class="card good"><span class="card-title">Page cache / SSD</span>Microseconds, not milliseconds</div>
+      <div class="card good"><span class="card-title">With yielding</span>Stay responsive (see later)</div>
+    </div>
+    <p class="callout">Sync is the fastest path for useful work. It hurts only when you <em>wait</em> on something slow. Many “I/O” calls hit OS caches and return immediately.</p>
+  </section>
+</section>

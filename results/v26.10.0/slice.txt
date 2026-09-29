@@ -1,0 +1,81 @@
+clk: ~4.33 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                     avg (min … max) p75 / p99    (min … top 1%)
+--------------------------------------------- -------------------------------
+• alloc/free 1024 bytes
+--------------------------------------------- -------------------------------
+Buffer.allocUnsafe(1024)        28.13 ns/iter  26.54 ns █                    
+                       (24.18 ns … 224.42 ns)  86.36 ns ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.27 ms …   6.09 ms) 110.10  b (108.18  b…210.25  b)
+
+PoolAllocator.realloc(1024)     21.05 ns/iter  19.34 ns █                    
+                       (18.57 ns … 154.51 ns)  42.37 ns █▃▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.29 ms …   4.77 ms)  56.24  b ( 56.11  b… 79.05  b)
+
+summary
+  PoolAllocator.realloc(1024)
+   1.34x faster than Buffer.allocUnsafe(1024)
+
+• alloc/free 8192 bytes
+--------------------------------------------- -------------------------------
+Buffer.allocUnsafe(8192)        60.05 ns/iter  58.99 ns   █                  
+                       (51.79 ns … 212.29 ns) 101.18 ns ▁▃██▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.32 ms …   6.03 ms) 137.68  b (136.12  b…217.51  b)
+
+PoolAllocator.realloc(8192)     20.66 ns/iter  18.65 ns █                    
+                       (18.47 ns … 167.66 ns)  37.62 ns █▂▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.36 ms …   5.11 ms)  56.79  b ( 56.11  b…212.21  b)
+
+summary
+  PoolAllocator.realloc(8192)
+   2.91x faster than Buffer.allocUnsafe(8192)
+
+• subarray 64 bytes
+--------------------------------------------- -------------------------------
+Buffer.subarray(0, 64)          19.98 ns/iter  19.29 ns    █                 
+                       (16.88 ns … 137.70 ns)  32.66 ns ▁▁▅█▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.35 ms …   5.32 ms) 104.19  b (104.12  b…110.25  b)
+
+new Slice(buffer, 0, 64)         7.65 ns/iter   7.59 ns     █                
+                         (5.70 ns … 16.75 ns)  14.50 ns ▂▁▁▁█▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.35 ms …   5.01 ms)  48.16  b ( 48.11  b… 52.72  b)
+
+summary
+  new Slice(buffer, 0, 64)
+   2.61x faster than Buffer.subarray(0, 64)
+
+• realloc churn (1024 → 2048 → 1024)
+--------------------------------------------- -------------------------------
+Buffer churn                    80.16 ns/iter  80.48 ns    ▄▇█               
+                       (76.38 ns … 215.92 ns)  84.78 ns ▂▁▃████▆▄▅█▃▃▂▁▁▁▃▅▄▂
+                    gc(  2.36 ms …   5.67 ms) 328.34  b (222.96  b…475.57  b)
+
+PoolAllocator churn             41.89 ns/iter  40.47 ns █                    
+                       (39.91 ns … 178.71 ns)  65.09 ns █▃▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                    gc(  2.37 ms …   4.80 ms)  57.83  b ( 56.11  b…447.33  b)
+
+summary
+  PoolAllocator churn
+   1.91x faster than Buffer churn
+
+• realloc in-place (same bucket, no GC)
+--------------------------------------------- -------------------------------
+PoolAllocator realloc 600→1000  11.27 ns/iter  11.21 ns █▃                   
+                       (11.15 ns … 270.37 ns)  12.54 ns ██                   
+                      (  0.09  b …   5.10  b)   0.09  b ██▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+
+• batch 100 alloc then free
+--------------------------------------------- -------------------------------
+Buffer batch 100                 6.73 µs/iter   6.90 µs          ▂ ▅█▅▂ ▂    
+                          (6.13 µs … 7.27 µs)   7.27 µs ▄▄▇▇▇▄▁▇▄█▄████▁█▁▄▁▇
+                    gc(  2.14 ms …   4.43 ms) 849.44  b (274.18  b…  2.42 kb)
+
+PoolAllocator batch 100          2.09 µs/iter   2.09 µs     █▅               
+                          (2.05 µs … 2.20 µs)   2.18 µs    ▃██               
+                      (119.99  b …   7.77 kb)   5.86 kb ▄█▃████▄▂▃▂▃▁▁▂▁▂▁▁▂▃
+
+summary
+  PoolAllocator batch 100
+   3.22x faster than Buffer batch 100

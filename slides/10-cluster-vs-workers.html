@@ -1,0 +1,75 @@
+<!-- CLUSTER VS WORKERS & reusePort -->
+<section id="cluster-vs-workers" data-chapter="Scaling across cores" data-chapter-num="09">
+  <section class="section-header">
+    <h2>Cluster vs Workers w/ reusePort</h2>
+    <p>Scaling Node.js across cores</p>
+  </section>
+
+  <section>
+    <h2>The cluster module</h2>
+    <pre class="big"><code class="language-javascript">import cluster from 'node:cluster'
+import { availableParallelism } from 'node:os'
+
+if (cluster.isPrimary) {
+  for (let i = 0; i < availableParallelism(); i++) cluster.fork()
+} else {
+  http.createServer(handler).listen(3000)
+}</code></pre>
+    <div class="cols-4">
+      <div class="card bad"><span class="card-title">Primary in the path</span>It accepts every connection and hands it over IPC</div>
+      <div class="card bad"><span class="card-title">Round-robin</span>Ignores how busy each process is</div>
+      <div class="card bad"><span class="card-title">A process each</span>A full runtime and heap per process</div>
+      <div class="card bad"><span class="card-title">IPC</span>JSON serialization to share anything</div>
+    </div>
+  </section>
+
+  <section data-core>
+    <h2>Worker threads + <code>reusePort</code></h2>
+    <pre class="big"><code class="language-javascript">const n = availableParallelism()
+for (let i = 0; i < n; i++) new Worker(new URL('./http-worker.js', import.meta.url))
+
+// http-worker.js: every Worker binds the same port
+http.createServer(handler).listen({ port: 3000, reusePort: true })</code></pre>
+    <div class="cols-3">
+      <div class="card good"><span class="card-title">Kernel load balancing</span><code>SO_REUSEPORT</code>: the OS distributes connections. No primary bottleneck.</div>
+      <div class="card good"><span class="card-title">Shared memory</span>Workers share a process: SharedArrayBuffer + Atomics.</div>
+      <div class="card good"><span class="card-title">eBPF steering</span>Attach a BPF program to the socket group to steer by CPU, session or load. Linux only, and it needs a native addon: Node has no API.</div>
+    </div>
+    <p class="source">Node ≥ 22.12 / 23.1. Linux 3.9+, FreeBSD 12+ and a few others; on macOS and Windows <code>listen</code> fails with <code>ENOTSUP</code>.</p>
+    <aside class="notes">⏱ 17:00. How the kernel picks: every Worker has its own listening socket in one SO_REUSEPORT group. For each new connection the kernel hashes the 4-tuple (source IP, source port, destination IP, destination port) and picks socket = hash mod group size. No shared accept queue, no primary, no thundering herd. But it balances connections, not load: a long keep-alive connection sticks to one Worker, a blocked Worker still gets its share of new connections, and a few connections can land unevenly (4 connections on 4 Workers: all on different Workers only 9% of the time). Adding or removing a Worker reshuffles the mapping. An eBPF SK_REUSEPORT program can override the choice: by CPU, by session, or least-loaded.</aside>
+  </section>
+
+  <section data-core>
+    <h2>Measured: the win is memory</h2>
+    <table class="data">
+      <thead><tr><th>4 cores, a small JSON response</th><th class="num">keep-alive, req/s</th><th class="num">new connection per request, req/s</th><th class="num">total RSS</th></tr></thead>
+      <tbody>
+        <tr><td>one process, one thread</td><td class="num">123K</td><td class="num">52K</td><td class="num">149 MiB</td></tr>
+        <tr><td>cluster (the primary round-robins)</td><td class="num">490K</td><td class="num loss">102K</td><td class="num loss">743 MiB</td></tr>
+        <tr><td>cluster + <code>reusePort</code></td><td class="num">489K</td><td class="num win">117K</td><td class="num">666 MiB</td></tr>
+        <tr><td>Workers + <code>reusePort</code>, one process</td><td class="num">487K</td><td class="num win">118K</td><td class="num win">421 MiB</td></tr>
+      </tbody>
+    </table>
+    <div class="stats" style="margin-top:22px">
+      <div class="stat good"><span class="stat-value">+15%</span><span class="stat-label">req/s with <code>reusePort</code> when connections churn: the primary is off the path</span></div>
+      <div class="stat good"><span class="stat-value">−43%</span><span class="stat-label">RSS: Workers vs cluster. Compute is cheap, memory is not.</span></div>
+    </div>
+    <p class="source">benchmarks/cluster-vs-workers.mjs · autocannon, 128 connections, on 8 other cores · median of 3 × 10 s · EPYC 9355P · Node 26.10</p>
+    <aside class="notes">With keep-alive the primary only hands over 128 connections once, so all three scale linearly (4×). It only matters when connections churn.</aside>
+  </section>
+
+  <section>
+    <h2>Comparison</h2>
+    <table class="data">
+      <thead><tr><th></th><th>cluster</th><th>Workers + <code>reusePort</code></th></tr></thead>
+      <tbody>
+        <tr><td>Connection routing</td><td>the primary process</td><td>the kernel</td></tr>
+        <tr><td>Load balancing</td><td>round-robin</td><td>4-tuple hash (eBPF to steer)</td></tr>
+        <tr><td>Sharing state</td><td>JSON over IPC</td><td>SharedArrayBuffer + Atomics, or <code>postMessage</code></td></tr>
+        <tr><td>Memory each</td><td>a whole process</td><td>an isolate + heap in one process</td></tr>
+        <tr><td>Primary in the path</td><td class="loss">for every new connection</td><td class="win">never</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="margin-top:22px">Remember: every Worker in a process shares one libuv thread pool (next).</p>
+  </section>
+</section>

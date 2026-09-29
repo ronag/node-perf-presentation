@@ -1,0 +1,47 @@
+clk: ~4.32 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                   avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------- -------------------------------
+• queue: push + drain 100 items
+------------------------------------------- -------------------------------
+closure queue                  1.32 µs/iter   1.38 µs  █▂       ▂          
+                        (1.24 µs … 1.55 µs)   1.54 µs ▅██▅▁▁▁▁▁██▄▁▁▁▁▁▁▁▁▁
+                  gc(  2.25 ms …   6.02 ms)   1.65 kb (  1.55 kb…  1.67 kb)
+
+flat queue (cb + opaque)     884.42 ns/iter 939.10 ns █                    
+                      (806.31 ns … 1.68 µs)   1.16 µs █▆▁▁▁▁▁▆█▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.24 ms …   5.47 ms)   1.06 kb (823.85  b…  1.11 kb)
+
+summary
+  flat queue (cb + opaque)
+   1.49x faster than closure queue
+
+• queue: push + drain 1000 items
+------------------------------------------- -------------------------------
+closure queue                 17.12 µs/iter  11.47 µs  █                   
+                      (8.67 µs … 381.66 µs)  97.83 µs ▁█▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+                  gc(  2.17 ms …   4.59 ms) 102.62 kb (102.30 kb…118.38 kb)
+
+flat queue (cb + opaque)       2.95 µs/iter   3.01 µs ▃▆       █           
+                        (2.87 µs … 3.20 µs)   3.17 µs ██▂▁▂▁▁▂▅█▄▁▁▂▁▁▂▁▁▁▂
+                  gc(  2.36 ms …   6.08 ms)   1.07 kb (  1.07 kb…  1.08 kb)
+
+summary
+  flat queue (cb + opaque)
+   5.8x faster than closure queue
+
+• reused queue: push + drain 100 items
+------------------------------------------- -------------------------------
+closure queue                  1.25 µs/iter   1.40 µs █▃                   
+                        (1.11 µs … 1.48 µs)   1.48 µs ██▃▁▁▁▁▁▂▃▅▂▂▂▁▄▆▅▄▂▂
+                  gc(  2.32 ms …   4.39 ms)   1.42 kb (  1.32 kb…  1.43 kb)
+
+flat queue (cb + opaque)     371.82 ns/iter 358.24 ns      █               
+                    (309.08 ns … 486.51 ns) 486.16 ns ▁▄▁▁▁██▁▁▁▁▁▁▁▁▁▁▁▁▁▅
+                  gc(  2.21 ms …   4.98 ms)   0.15  b (  0.11  b…  2.11  b)
+
+summary
+  flat queue (cb + opaque)
+   3.37x faster than closure queue

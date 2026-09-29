@@ -1,0 +1,36 @@
+sqlite 3.53.4, dir /data/sqlite-bench-p7SAgF
+
+INSERT one row (256 B) per statement, µs per row
+  default: rollback journal, synchronous=FULL    autocommit    215.71 µs   1000/txn    1.20 µs
+  WAL, synchronous=FULL                          autocommit     25.90 µs   1000/txn    1.32 µs
+  WAL, synchronous=NORMAL                        autocommit     11.53 µs   1000/txn    1.36 µs
+  WAL, synchronous=OFF                           autocommit      3.88 µs   1000/txn    0.73 µs
+clk: ~4.33 GHz
+cpu: AMD EPYC 9355P 32-Core Processor
+runtime: node 26.10.0 (x64-linux)
+
+benchmark                              avg (min … max) p75 / p99    (min … top 1%)
+------------------------------------------------------ -------------------------------
+• SELECT one row by primary key
+------------------------------------------------------ -------------------------------
+db.prepare(sql).get() every call          4.36 µs/iter   4.55 µs █              ▅     
+                                   (3.99 µs … 4.95 µs)   4.71 µs █▃             █     
+                               (177.33  b … 495.22  b) 477.77  b ██▁▁▁▁▁▁▁▁▁▁▄█████▄▁▄
+
+reused statement .get()                   1.33 µs/iter   1.33 µs ▂█▂▂                 
+                                   (1.31 µs … 1.58 µs)   1.39 µs ████                 
+                               (203.72  b … 440.35  b) 437.52  b ████▇▆▄▅▄▇▃▂▁▂▁▃▁▁▂▂▂
+
+createTagStore() sql.get`…`               1.49 µs/iter   1.49 µs        █             
+                                   (1.47 µs … 1.57 µs)   1.52 µs  ▃     █▆▃           
+                               ( 69.93  b … 440.35  b) 436.19  b ▇█▇▆▃▂▅███▃▃▂▂▁▁▂▂▁▃▂
+
+reused statement, setReturnArrays(true)   1.18 µs/iter   1.18 µs   ▃█                 
+                                   (1.17 µs … 1.29 µs)   1.22 µs   ██▅                
+                               (174.20  b … 176.19  b) 175.36  b ▃▇███▆▄▂▁▁▂▁▂▁▂▁▁▁▂▂▂
+
+summary
+  reused statement, setReturnArrays(true)
+   1.13x faster than reused statement .get()
+   1.27x faster than createTagStore() sql.get`…`
+   3.7x faster than db.prepare(sql).get() every call

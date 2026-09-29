@@ -1,0 +1,11 @@
+sqlite 3.53.4, dir /tmp/sqlite-contention-vPyTw0, 3 s per case, busy timeout 5000 ms
+INSERT one 256 B row per autocommit statement, every Worker on its own connection to one file
+
+  default: rollback journal, synchronous=FULL   1 worker(s)      4114 rows/s  p50    216.4 µs  p99     547.4 µs  max    20.6 ms  busy errors 0
+  default: rollback journal, synchronous=FULL   8 worker(s)      3801 rows/s  p50    218.0 µs  p99     589.1 µs  max  3159.7 ms  busy errors 0
+  WAL, synchronous=FULL                         1 worker(s)     16374 rows/s  p50     27.1 µs  p99      66.2 µs  max   406.6 ms  busy errors 0
+  WAL, synchronous=FULL                         8 worker(s)     10118 rows/s  p50     37.0 µs  p99     650.2 µs  max  3238.9 ms  busy errors 0
+  WAL, synchronous=NORMAL                       1 worker(s)     85108 rows/s  p50      5.7 µs  p99      38.3 µs  max     7.3 ms  busy errors 0
+  WAL, synchronous=NORMAL                       8 worker(s)     59733 rows/s  p50      6.3 µs  p99      82.9 µs  max  1390.8 ms  busy errors 0
+  WAL, synchronous=OFF                          1 worker(s)    103994 rows/s  p50      5.7 µs  p99      34.0 µs  max     8.2 ms  busy errors 0
+  WAL, synchronous=OFF                          8 worker(s)     72001 rows/s  p50      6.4 µs  p99      48.4 µs  max  3042.7 ms  busy errors 0

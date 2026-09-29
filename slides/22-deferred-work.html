@@ -1,0 +1,53 @@
+<!-- DEFERRED WORK -->
+<section id="deferred-work" data-chapter="Deferred work" data-chapter-num="21">
+  <section class="section-header">
+    <h2>Deferred Work</h2>
+    <p>Do less now, do more later</p>
+  </section>
+
+  <section>
+    <h2>Do work, but later</h2>
+    <div class="cols">
+      <div>
+        <div class="col-label bad">O(1) inline: a Set</div>
+        <pre><code class="language-javascript">const requests = new Set()
+
+function onRequest (req) {
+  // per request: hash,
+  // a closure and a listener
+  requests.add(req)
+  req.on('close', () => {
+    requests.delete(req)
+  })
+}</code></pre>
+      </div>
+      <div>
+        <div class="col-label good">O(n) deferred: array + sweep</div>
+        <pre><code class="language-javascript">const requests = []
+
+function onRequest (req) {
+  requests.push(req)  // one push
+}
+
+function sweep () {
+  for (let n = 0; n < requests.length;) {
+    if (requests[n].closed) swapRemove(requests, n)  // O(1)
+    else n++
+  }
+}
+setInterval(sweep, 2000)</code></pre>
+      </div>
+    </div>
+    <p class="callout">An O(n) sweep every 2 s can be cheaper than bookkeeping on every request, but closed requests stay alive up to 2 s longer and may get promoted. Measure both.</p>
+  </section>
+
+  <section>
+    <h2>Off-peak scheduling</h2>
+    <pre class="big"><code class="language-javascript">cron('02:00', () => {
+  compactCaches()
+  rotateLogs()
+  globalThis.gc()   // a full collection when nobody is waiting (--expose-gc)
+})</code></pre>
+    <p class="callout">You can't avoid expensive work, but you can <strong>choose when some of it happens</strong>: compaction and cleanup run off-peak. A forced GC doesn't stop V8 collecting at peak.</p>
+  </section>
+</section>

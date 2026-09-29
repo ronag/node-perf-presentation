@@ -1,0 +1,21 @@
+<!-- STREAMS -->
+<section id="streams" data-chapter="Streams" data-chapter-num="15">
+  <section class="section-header">
+    <h2>Streams</h2>
+    <p>Backpressure and chunk size</p>
+  </section>
+
+  <section>
+    <h2><code>stream.setDefaultHighWaterMark</code></h2>
+    <pre class="big"><code class="language-javascript">import { setDefaultHighWaterMark } from 'node:stream'
+
+// byte streams created after this call (fs.createReadStream stays at 64 KiB)
+setDefaultHighWaterMark(false, 256 * 1024)</code></pre>
+    <div class="cols">
+      <div class="card good"><span class="card-title">Bigger highWaterMark</span>Fewer backpressure stalls and <code>'drain'</code> round trips; writable streams batch more chunks per writev.</div>
+      <div class="card warn"><span class="card-title">Trade-off: memory</span>Each stream buffers more. With thousands of concurrent streams it adds up.</div>
+    </div>
+    <p class="muted">Default: <strong>64 KiB since Node 22</strong> (16 KiB before; still 16 KiB on Windows). In-process pipelines barely care.</p>
+  </section>
+
+</section>

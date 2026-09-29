@@ -1,0 +1,9 @@
+4096 rows × 5 fragments per response, 3 s per case, median of 3
+string fragments
+  plain     216.8 responses/s  (1.00× plain)
+  cork      215.3 responses/s  (0.99× plain)
+  slab     1470.5 responses/s  (6.78× plain)
+buffer fragments
+  plain     367.6 responses/s  (1.00× plain)
+  cork      367.8 responses/s  (1.00× plain)
+  slab     1712.8 responses/s  (4.66× plain)
