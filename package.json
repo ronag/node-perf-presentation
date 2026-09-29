@@ -13,6 +13,7 @@
     "bench:bitmap": "node --expose-gc benchmarks/bitmap.mjs",
     "bench:cache": "node --expose-gc benchmarks/cache.mjs",
     "bench:closures": "node --expose-gc benchmarks/closures.mjs",
+    "bench:containers-cold": "for t in intrusive-array intrusive-list array set wrapper-list; do TYPE=$t LISTS=100000 node --max-old-space-size=4096 benchmarks/containers-cold.mjs; done",
     "bench:cluster": "node benchmarks/cluster-vs-workers.mjs",
     "bench:cross-thread": "node --expose-gc benchmarks/cross-thread.mjs",
     "bench:fast-time": "node --expose-gc benchmarks/fast-time.mjs",

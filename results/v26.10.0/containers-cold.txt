@@ -1,0 +1,32 @@
+# benchmarks/containers-cold.mjs, 3 interleaved rounds, node:26.10.0, --cpuset-cpus=4, one process per line
+intrusive-array  N=30 LISTS=1      6.9 ns/op  [6.6–7.7]  heap 5 MiB
+intrusive-list   N=30 LISTS=1      7.3 ns/op  [7.1–7.4]  heap 5 MiB
+array            N=30 LISTS=1     44.8 ns/op  [44.6–44.9]  heap 5 MiB
+set              N=30 LISTS=1     45.8 ns/op  [45.0–50.0]  heap 4 MiB
+wrapper-list     N=30 LISTS=1     58.3 ns/op  [56.9–59.5]  heap 4 MiB
+intrusive-array  N=30 LISTS=100000    192.7 ns/op  [180.4–197.8]  heap 232 MiB
+intrusive-list   N=30 LISTS=100000    205.2 ns/op  [175.1–212.0]  heap 192 MiB
+array            N=30 LISTS=100000    345.5 ns/op  [335.8–367.2]  heap 254 MiB
+set              N=30 LISTS=100000    499.0 ns/op  [391.9–595.7]  heap 455 MiB
+wrapper-list     N=30 LISTS=100000    986.7 ns/op  [900.6–1065.3]  heap 995 MiB
+intrusive-array  N=30 LISTS=1      7.6 ns/op  [5.8–9.2]  heap 5 MiB
+intrusive-list   N=30 LISTS=1      6.3 ns/op  [6.2–10.0]  heap 5 MiB
+array            N=30 LISTS=1     44.3 ns/op  [44.0–56.7]  heap 4 MiB
+set              N=30 LISTS=1     46.2 ns/op  [46.2–46.3]  heap 4 MiB
+wrapper-list     N=30 LISTS=1     63.4 ns/op  [61.7–64.5]  heap 5 MiB
+intrusive-array  N=30 LISTS=100000    184.4 ns/op  [151.6–201.0]  heap 228 MiB
+intrusive-list   N=30 LISTS=100000    183.2 ns/op  [158.4–188.6]  heap 193 MiB
+array            N=30 LISTS=100000    294.5 ns/op  [290.2–312.4]  heap 252 MiB
+set              N=30 LISTS=100000    382.2 ns/op  [303.3–541.2]  heap 454 MiB
+wrapper-list     N=30 LISTS=100000    829.1 ns/op  [763.4–893.4]  heap 995 MiB
+intrusive-array  N=30 LISTS=1      5.8 ns/op  [5.8–5.9]  heap 4 MiB
+intrusive-list   N=30 LISTS=1      6.7 ns/op  [6.7–6.8]  heap 5 MiB
+array            N=30 LISTS=1     44.2 ns/op  [44.1–44.3]  heap 4 MiB
+set              N=30 LISTS=1     45.8 ns/op  [45.7–45.9]  heap 5 MiB
+wrapper-list     N=30 LISTS=1     59.0 ns/op  [57.8–59.8]  heap 5 MiB
+intrusive-array  N=30 LISTS=100000    147.6 ns/op  [147.0–149.6]  heap 228 MiB
+intrusive-list   N=30 LISTS=100000    179.8 ns/op  [152.3–181.6]  heap 192 MiB
+array            N=30 LISTS=100000    292.4 ns/op  [290.7–304.5]  heap 252 MiB
+set              N=30 LISTS=100000    390.0 ns/op  [309.3–536.5]  heap 456 MiB
+wrapper-list     N=30 LISTS=100000    866.8 ns/op  [785.7–889.4]  heap 995 MiB
+DONE
