@@ -31,7 +31,7 @@ Open the speaker view on the laptop and drag the main window to the projector.
 ### Core path vs full deck
 
 The deck has ~140 slides, far more than 30 minutes allow.
-- **Core path (`?core`).** 38 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
+- **Core path (`?core`).** 39 slides marked `data-core` make up the 30-minute talk. Open **`http://localhost:8000/?core`** (or press **`C`**) to show only those.
 - **Full deck.** Without `?core` everything is shown, for depth and Q&A. Backup chapters are uncounted.
 
 | Part | Core slides | ⏱ target |
@@ -41,7 +41,7 @@ The deck has ~140 slides, far more than 30 minutes allow.
 | GC semi-space; HTTP: `res.write()` vs cork vs slab, own buffer, custom ServerResponse | 4 | 10:00–12:30 |
 | async/await cost, async return pattern, sync I/O (12–13×) | 3 | 12:30–14:30 |
 | SQLite: prepare once, durability, contending writers, sharding | 4 | 14:30–17:00 |
-| Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool, ring buffer | 4 | 17:00–19:00 |
+| Workers + reusePort (measured: +15% on churn, −43% RSS), thread pool and its trade-offs, ring buffer | 5 | 17:00–19:00 |
 | Bitmaps, Slice, `Buffer.poolSize` | 3 | 19:00–21:00 |
 | URL parsing, pooled timers, promise chains starve, maybeYield, priorities | 5 | 21:00–25:00 |
 | Flat queue, intrusive containers (last on purpose: cut first if late) | 2 | 25:00–26:30 |
