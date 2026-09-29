@@ -54,7 +54,7 @@
   </section>
 
   <section data-core>
-    <h2>Step 2: link-time optimization</h2>
+    <h2>Step 2: link-time optimization (LTO)</h2>
     <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
     <div class="chart compact" data-signed data-unit="%" data-title="our build with the official compiler (Clang 20.1) → + full LTO · + is better">
       B_STEP_LTO_ROWS
@@ -87,7 +87,7 @@
   </section>
 
   <section data-core>
-    <h2>Step 5: profile-guided optimization</h2>
+    <h2>Step 5: profile-guided optimization (PGO)</h2>
     <div class="flow">
       <div class="step"><b>1 · Instrument</b><code>-fprofile-generate</code><br><code>-fprofile-update=atomic</code> (threads)</div>
       <div class="arrow">→</div>
