@@ -70,14 +70,22 @@ for (const msg of messages) {
   </section>
 
   <section data-core>
-    <h2><code>Buffer.poolSize</code>: bump it</h2>
-    <pre><code class="language-javascript">Buffer.poolSize = 1024 * 1024   // pooled below 512 KiB (default 64 KiB → below 32 KiB)</code></pre>
-    <div class="chart" data-unit="ns" data-title="Buffer.allocUnsafe(16 KiB)">
-      <div class="bad" data-value="585">poolSize 64 KiB (Node 26 default)</div>
-      <div class="good" data-value="377" data-note="1.55×">poolSize 1 MiB</div>
+    <h2><code>Buffer.poolSize</code>: bump it, carefully</h2>
+    <pre><code class="language-javascript">Buffer.poolSize = 256 * 1024   // pooled below 128 KiB (the 64 KiB default: below 32 KiB)</code></pre>
+    <div class="cols">
+      <div class="chart compact" data-unit="Mops/s" data-title="allocUnsafe(16 KiB) churn">
+        <div class="bad" data-value="2.52">poolSize 64 KiB (default)</div>
+        <div class="good" data-value="7.09" data-note="2.8×">256 KiB</div>
+        <div class="good" data-value="10.56" data-note="4.2×">1 MiB</div>
+      </div>
+      <div class="chart compact" data-unit="Mops/s" data-title="allocUnsafe(256 KiB) churn">
+        <div data-value="1.41">poolSize 64 KiB (default)</div>
+        <div class="neutral" data-value="1.33" data-note="−6%">256 KiB</div>
+        <div class="bad" data-value="0.60" data-note="2.4× slower">1 MiB</div>
+      </div>
     </div>
-    <p class="muted">Node 26.3 raised the default from 8 KiB to 64 KiB. A bigger slab means fewer slab allocations, at the cost of more pinning.</p>
-    <p class="source">benchmarks/poolsize.mjs · EPYC 9355P · Node 26.10 · 1 KiB: 28.8 → 24.2 ns; 48 KiB: no change; 128 KiB: 3.08 → 3.53 µs (now pooled, slower)</p>
+    <p class="muted">Only allocations under <code>poolSize / 2</code> come from the pool. Size it for your small buffers: at 1 MiB, 256 KiB chunks get pooled too, and V8 runs 4× more full GCs.</p>
+    <p class="source">benchmarks/poolsize-churn.mjs · one process per case · EPYC 9355P · Node 26.10</p>
   </section>
 
   <section>

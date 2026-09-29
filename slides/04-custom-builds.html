@@ -36,11 +36,11 @@
       <thead><tr><th>Knob</th><th>Default</th><th>Tuned</th><th class="num">Effect</th></tr></thead>
       <tbody>
         <tr class="fragment fade-up"><td><code>--max-semi-space-size=64</code></td><td>scales with RAM</td><td>64 MiB</td><td class="num win">+28% allocation-heavy throughput</td></tr>
-        <tr class="fragment fade-up"><td><code>Buffer.poolSize = 1 &lt;&lt; 20</code></td><td>64 KiB</td><td>1 MiB</td><td class="num win">16 KiB allocUnsafe 1.55× faster, but 256 KiB churn 15× slower</td></tr>
+        <tr class="fragment fade-up"><td><code>Buffer.poolSize = 1 &lt;&lt; 20</code></td><td>64 KiB</td><td>1 MiB</td><td class="num win">16 KiB allocUnsafe 4.2×, but 256 KiB chunks 2.4× slower</td></tr>
         <tr class="fragment fade-up"><td><code>UV_THREADPOOL_SIZE=16</code></td><td>4 threads</td><td>16</td><td class="num win">3–3.5× blocking crypto / mixed work (16 cores)</td></tr>
       </tbody>
     </table>
-    <p class="source">benchmarks/semi-space.mjs, poolsize.mjs, uv-threadpool.mjs · EPYC 9355P · Node 26.10</p>
+    <p class="source">benchmarks/semi-space.mjs, poolsize-churn.mjs, uv-threadpool.mjs · EPYC 9355P · Node 26.10 · a 256 KiB pool keeps most of the win (2.8×) without the slowdown</p>
   </section>
 
   <section data-core>
@@ -59,6 +59,8 @@
     <h2>Step 2: link-time optimization</h2>
     <pre><code class="language-bash">./configure --enable-lto   # inline and optimize across Node, V8 and every dependency</code></pre>
     <div class="chart compact" data-signed data-unit="%" data-title="our build with the official compiler (Clang 20.1) → + full LTO · + is better">
+      <div class="noise" data-note="within noise" data-value="4.2">record churn under GC</div>
+      <div class="noise" data-note="within noise" data-value="3.2">Buffer.allocUnsafe 256 KiB chunk churn</div>
       <div data-value="-2.6">gzip level 1, 1 MiB</div>
       <div data-value="-6.3">JSON.parse small object (~250 B)</div>
     </div>
@@ -189,22 +191,5 @@
       <tr><td>full GC pause, 1M records</td><td class="sepr num loss">−3%</td><td class="num noise">+1%</td><td class="num noise">−1%</td><td class="num noise">+2%</td><td class="num noise">+2%</td><td class="num win">+19%</td><td class="num noise">+2%</td><td class="num noise">−1%</td><td class="num win">+22%</td></tr>
     </tbody></table>
     <p class="source">Median of 8 interleaved runs · EPYC 9355P · Node 26.10.0 · + is better · each column adds one step; the columns multiply to the total (official → step 7) · +LTO includes rebuilding with our toolchain (alone +0.1%) · grey: under 3% · (x%): noise, or not reproduced by a second PGO chain · +tune: Step 0 flags on the official binary, a separate A/B, not in the total (its startup cost is the --import that sets poolSize)</p>
-  </section>
-
-  <section>
-    <h2>How to build it</h2>
-    <pre><code class="language-dockerfile"># cc-wrap adds -O3 -march=znver5 -mtune=znver5 -mno-gather, plus -fprofile-* from NODE_PGO
-# (Node's own --enable-pgo-* is GCC-only)
-ENV CC=/usr/local/bin/cc-wrap CXX=/usr/local/bin/c++-wrap
-RUN git apply v8-copy-array-buffer-view-bytes.patch
-
-RUN ./configure --enable-lto --experimental-enable-pointer-compression \
- && NODE_PGO=generate make -j"$(nproc)"                     # 1. instrumented build
-RUN ./out/Release/node train.mjs                            # 2. run the corpus (120 s)
-RUN llvm-profdata merge --weighted-input=16,json.profdata … -o node.profdata
-RUN make distclean && ./configure --enable-lto … \
- && NODE_PGO=use make -j"$(nproc)"                          # 3. optimized build
-RUN make test-ci                                            # it's your runtime now: test it</code></pre>
-    <p class="muted">Two full compiles plus training: hours, not minutes. Cache them as Docker layers and rebuild per Node release.</p>
   </section>
 </section>

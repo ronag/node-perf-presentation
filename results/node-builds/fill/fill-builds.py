@@ -105,16 +105,21 @@ def movers(a, b, k=2, skip=()):
     cands = [(d, n) for d, n in cands if d is not None and abs(d) < 5 and significant(rows[n], a, b)]
     return [n for d, n in sorted(cands, key=lambda t: -abs(t[0]))[:k]]
 
-def chart(a, b, extra=(), drop=(), min_abs=0.0):
+def chart(a, b, extra=(), drop=(), min_abs=0.0, always=()):
+    """Rows that clear the noise bar; `always` rows are shown anyway, greyed and marked when within noise."""
     items = [(find(s), lab) for s, lab in SHOW if s not in drop] + [(rows[n], label(n)) for n in extra if n in rows]
     out = []
     for row, lab in items:
         d = delta(row, a, b)
-        if d is None or abs(d) > 5 or not significant(row, a, b):
-            continue   # within noise of 0%: not shown
-        out.append((d, lab))
+        if d is None or abs(d) > 5:
+            continue
+        if significant(row, a, b):
+            out.append((d, lab, ''))
+        elif row['name'] in always:
+            out.append((d, lab, ' class="noise" data-note="within noise"'))
+        # else: within noise of 0%, not shown
     out.sort(key=lambda t: -t[0])
-    return '\n      '.join(f'<div data-value="{d * 100:.1f}">{html.escape(lab)}</div>' for d, lab in out)
+    return '\n      '.join(f'<div{attrs} data-value="{d * 100:.1f}">{html.escape(lab)}</div>' for d, lab, attrs in out)
 
 STEPS = {   # placeholder: (from, to)
     'MIMALLOC': ('official', 'omimalloc'), 'C20': ('omimalloc', 'c20'), 'LTO': ('c20', 'lto'),
@@ -133,7 +138,8 @@ lo, hi = min(counts), max(counts)
 s = s.replace('B_NMETRICS', f'{lo}' if lo == hi else f'{lo}–{hi}')
 
 s = s.replace('B_STEP_MIMALLOC_ROWS', chart('official', 'omimalloc', ['JSON.stringify escaped strings 1.8 MiB', 'Buffer.allocUnsafe 256 KiB chunk churn']))
-s = s.replace('B_STEP_LTO_ROWS', chart('c20', 'lto', movers('c20', 'lto', skip=['Buffer.copy 128 KiB, storage chunk'])))
+s = s.replace('B_STEP_LTO_ROWS', chart('c20', 'lto', movers('c20', 'lto', skip=['Buffer.copy 128 KiB, storage chunk']) + ['Buffer.allocUnsafe 256 KiB chunk churn'],
+                                       always=['Record churn under GC', 'Buffer.allocUnsafe 256 KiB chunk churn']))
 s = s.replace('B_STEP_Z5_ROWS', chart('lto', 'znver5', ['Buffer.swap16 8 KiB holdout'] + movers('lto', 'znver5', skip=['Buffer.swap16 8 KiB holdout'])))
 s = s.replace('B_STEP_C23_ROWS', chart('znver5', 'clang23', movers('znver5', 'clang23', skip=['Buffer.copy 128 KiB, storage chunk'])))
 s = s.replace('B_STEP_PGO_ROWS', chart('clang23', 'pgo'))

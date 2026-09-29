@@ -1,0 +1,7 @@
+# benchmarks/poolsize-churn.mjs, one container per case, node:26.10.0-trixie-slim, --cpuset-cpus=20, 2 s each
+poolSize   64 KiB  allocUnsafe(16 KiB)  2.52 Mops/s
+poolSize  256 KiB  allocUnsafe(16 KiB)  7.09 Mops/s
+poolSize 1024 KiB  allocUnsafe(16 KiB)  10.56 Mops/s
+poolSize   64 KiB  allocUnsafe(256 KiB)  1.41 Mops/s
+poolSize  256 KiB  allocUnsafe(256 KiB)  1.33 Mops/s
+poolSize 1024 KiB  allocUnsafe(256 KiB)  0.60 Mops/s

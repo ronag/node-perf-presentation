@@ -70,7 +70,7 @@ http.createServer({ ServerResponse: Response }, handler)</code></pre>
       <div class="good" data-value="40" data-note="2.1×">subclass with a plain header object</div>
     </div>
     <p class="callout bad"><strong>Here be dragons.</strong> Skips core's checks in <code>setHeader</code> and leans on how core writes headers. Not safe in general: only if you know exactly what you are doing. Re-test on every Node upgrade.</p>
-    <p class="source">Production service measurement.</p>
+    <p class="source">Header timings measured in a production service; no benchmark in this repo.</p>
   </section>
 
 </section>

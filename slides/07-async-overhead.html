@@ -15,13 +15,14 @@
 // 2. captures the async context (AsyncLocalStorage, …)
 // 3. suspends the function and saves its frame
 // 4. resumes it from a microtask, even if the value was already there</code></pre>
-    <div class="chart" data-unit="ns">
+    <div class="chart compact" data-unit="ns">
       <div class="good" data-value="0.65">plain function call</div>
       <div class="good" data-value="1.35">callback, fired synchronously</div>
       <div data-value="25.8">queueMicrotask(cb): the enqueue alone</div>
       <div class="bad" data-value="72.1">new Promise(resolve)</div>
       <div class="bad" data-value="74.4" data-note="113×">async function + await</div>
     </div>
+    <p class="accent">“There's no such thing as a free lunch.”</p>
     <p class="source">benchmarks/async-overhead.mjs · EPYC 9355P · Node 26.10</p>
     <aside class="notes">⏱ 12:30</aside>
   </section>

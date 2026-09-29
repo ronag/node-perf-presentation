@@ -378,6 +378,8 @@ html.print-pdf .reveal .slides > section, html.print-pdf .pdf-page { background:
 .reveal .chart-value .note { color: var(--good); font-weight: 700; margin-left: 10px; font-family: var(--r-main-font); }
 .reveal .chart-row.bad .chart-value .note { color: var(--bad); }
 .reveal .chart-row.neutral .chart-value .note { color: var(--muted); }
+.reveal .chart .chart-row.noise .chart-bar { background: var(--faint); }
+.reveal .chart .chart-row.noise .chart-value .note { color: var(--muted); font-weight: 500; }
 .reveal section.present .chart-bar,
 .reveal.overview .chart-bar,
 html.print-pdf .reveal .chart-bar,
