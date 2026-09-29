@@ -1,4 +1,5 @@
-clk: ~4.32 GHz
+ControlSocket /tmp/._bmux-tv2k-srv4.bmux.sock already exists, disabling multiplexing
+clk: ~4.27 GHz
 cpu: AMD EPYC 9355P 32-Core Processor
 runtime: node 26.10.0 (x64-linux)
 
@@ -6,70 +7,70 @@ benchmark                        avg (min … max) p75 / p99    (min … top 1%)
 ------------------------------------------------ -------------------------------
 • set 1 entry (warm cache)
 ------------------------------------------------ -------------------------------
-LRUCache.set                       19.88 ns/iter  19.17 ns █▅                   
-                           (18.77 ns … 32.12 ns)  27.07 ns ██▂▁▁▂▁▁▁▁▁▁▁▁▂▃▂▁▁▁▁
-                       gc(  2.44 ms …   5.53 ms)  56.34  b ( 56.17  b… 68.30  b)
+LRUCache.set                       19.49 ns/iter  19.02 ns █▃                   
+                           (18.47 ns … 32.11 ns)  26.29 ns ██▃▃▁▁▁▁▁▁▁▁▁▁▂▂▂▁▁▁▁
+                       gc(  2.43 ms …   5.50 ms)  56.39  b ( 56.17  b… 73.70  b)
 
-FastCache.set (intrusive)           5.39 ns/iter   5.50 ns ▇      █             
-                           (3.52 ns … 118.21 ns)   9.30 ns █▂▁▁▁▁▂██▁▁▁▁▁▁▁▁▁▁▁▁
-                       gc(  2.47 ms …   6.82 ms)   0.16  b (  0.11  b…  2.44  b)
+FastCache.set (intrusive)          11.53 ns/iter  13.75 ns  █                   
+                            (9.93 ns … 25.51 ns)  14.26 ns ██▂▂▂▁▁▁▁▁▁▁▁▁▁▁▂▃▇▄▂
+                       gc(  2.46 ms …   6.29 ms)   0.19  b (  0.11  b…  8.19  b)
 
 summary
   FastCache.set (intrusive)
-   3.69x faster than LRUCache.set
+   1.69x faster than LRUCache.set
 
 • get 1 entry (hit)
 ------------------------------------------------ -------------------------------
-LRUCache.get                       13.94 ns/iter  13.51 ns █                    
-                           (13.32 ns … 26.12 ns)  24.82 ns █▃▁▁▁▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁
-                       gc(  2.48 ms …   5.22 ms)   1.22  b (  0.11  b… 59.80  b)
+LRUCache.get                       14.36 ns/iter  14.07 ns █                    
+                           (13.18 ns … 25.69 ns)  21.82 ns █▂▃▁▁▁▁▁▂▄▁▁▁▁▁▁▁▁▁▁▁
+                       gc(  2.48 ms …   5.71 ms)   1.22  b (  0.11  b… 59.97  b)
 
-FastCache.get (intrusive)          11.61 ns/iter  14.16 ns █                    
-                            (8.06 ns … 20.80 ns)  15.69 ns █▆▂▁▁▁▁▃▁▁▁▁▁▁▃██▅▃▃▂
-                       gc(  2.53 ms …   6.65 ms)   0.15  b (  0.11  b…  4.12  b)
+FastCache.get (intrusive)           9.59 ns/iter   9.16 ns █                    
+                            (7.90 ns … 23.54 ns)  16.13 ns █▄▂▁▁▁▁▁▁▁▁▁▁▂▃▂▁▁▁▁▁
+                       gc(  2.51 ms …   5.63 ms)   0.13  b (  0.11  b…  1.23  b)
 
 summary
   FastCache.get (intrusive)
-   1.2x faster than LRUCache.get
+   1.5x faster than LRUCache.get
 
 • get 1 entry (miss)
 ------------------------------------------------ -------------------------------
-LRUCache.get (miss)                11.20 ns/iter  13.35 ns  █                   
-                            (9.96 ns … 19.61 ns)  14.75 ns ▆█▂▂▁▁▁▁▁▁▁▁▁▁▁▅▃▂▁▁▁
-                       gc(  2.53 ms …   5.84 ms)   1.46  b (  0.11  b… 62.15  b)
+LRUCache.get (miss)                10.88 ns/iter  10.63 ns █▅                   
+                            (9.76 ns … 23.33 ns)  18.64 ns ██▃▂▁▁▁▁▄▃▂▁▁▁▁▁▁▁▁▁▁
+                       gc(  2.53 ms …   7.23 ms)   1.49  b (  0.11  b… 62.16  b)
 
-FastCache.get (miss)               11.67 ns/iter  13.47 ns                 █    
-                            (7.84 ns … 14.96 ns)  14.65 ns ▇█▁▂▁▁▂▁▁▁▁▁▁▁▁▃██▃▂▂
-                       gc(  2.54 ms …   5.63 ms)   0.13  b (  0.11  b…  2.21  b)
+FastCache.get (miss)                8.91 ns/iter   8.19 ns ▅█                   
+                            (7.88 ns … 14.73 ns)  14.34 ns ██▂▁▁▁▁▁▁▁▁▁▁▁▁▂▁▃▁▁▁
+                       gc(  2.52 ms …   4.77 ms)   0.14  b (  0.11  b…  2.30  b)
 
 summary
-  LRUCache.get (miss)
-   1.04x faster than FastCache.get (miss)
+  FastCache.get (miss)
+   1.22x faster than LRUCache.get (miss)
 
 • mixed get/set (80% get, 20% set)
 ------------------------------------------------ -------------------------------
-LRUCache mixed                     23.63 ns/iter  24.08 ns ▂      █             
-                          (21.45 ns … 113.70 ns)  28.75 ns ██▄▂▁▁▂█▇▂▂▁▁▁▁▁▁▁▁▁▁
-                       gc(  2.54 ms …   5.41 ms)  12.33  b ( 11.30  b… 79.85  b)
+LRUCache mixed                     22.32 ns/iter  23.56 ns █▂                   
+                           (21.03 ns … 33.81 ns)  29.89 ns ██▃▁▁▂█▂▂▁▁▁▁▁▁▁▁▁▁▁▁
+                       gc(  2.55 ms …   6.18 ms)  12.64  b ( 11.30  b… 60.11  b)
 
-FastCache mixed (intrusive)        16.54 ns/iter  17.55 ns  █                   
-                           (14.88 ns … 96.57 ns)  20.66 ns ▅█▃▂▁▁▁▁▂▅▆▂▂▁▁▁▁▁▁▁▁
-                       gc(  2.56 ms …   6.27 ms)   0.14  b (  0.11  b…  2.25  b)
+FastCache mixed (intrusive)        17.41 ns/iter  17.12 ns  █▃                  
+                           (16.68 ns … 25.76 ns)  20.06 ns ▇██▃▂▁▂▁▁▁▁▁▁▁▂▃▂▂▁▁▁
+                       gc(  2.53 ms …   5.82 ms)   0.16  b (  0.11  b…  2.59  b)
 
 summary
   FastCache mixed (intrusive)
-   1.43x faster than LRUCache mixed
+   1.28x faster than LRUCache mixed
 
 • set with eviction (full cache, 4× key space)
 ------------------------------------------------ -------------------------------
-LRUCache.set + evict               58.57 ns/iter  57.66 ns   ▃█                 
-                          (55.06 ns … 213.31 ns)  64.02 ns ▂▄███▄▄▂▂▂▄▄▃▂▁▁▂▁▁▁▁
-                       gc(  2.54 ms …   5.10 ms) 112.16  b (112.14  b…112.78  b)
+LRUCache.set + evict               58.52 ns/iter  59.28 ns    ██▄               
+                           (55.65 ns … 80.16 ns)  65.16 ns ▃▄████▆▅▄▅▄▄▅▂▁▁▁▁▁▁▂
+                       gc(  2.54 ms …   7.35 ms) 112.17  b (112.14  b…116.15  b)
 
-FastCache.set + evict (intrusive)  82.08 ns/iter  83.33 ns    ▂█                
-                          (77.54 ns … 115.37 ns)  95.71 ns ▆█▆██▇▆▃▄▅▆▂▁▁▁▁▁▁▁▁▁
-                       gc(  2.55 ms …   5.61 ms)  88.08  b ( 74.06  b… 92.12  b)
+FastCache.set + evict (intrusive)  90.02 ns/iter  90.87 ns     █▅               
+                          (85.57 ns … 180.81 ns)  97.80 ns ▂▄▄███▇█▅▃▃▆█▃▁▂▁▁▁▁▂
+                       gc(  2.56 ms …   5.82 ms)  88.06  b ( 74.10  b… 89.82  b)
 
 summary
   LRUCache.set + evict
-   1.4x faster than FastCache.set + evict (intrusive)
+   1.54x faster than FastCache.set + evict (intrusive)

@@ -9,7 +9,7 @@
     <h2>The problems with LRU</h2>
     <p class="lead">Typical LRU: a <code>Map</code> for lookup plus a doubly linked list for recency.</p>
     <div class="cols-3">
-      <div class="card bad"><span class="card-title">Overhead per entry</span>A <code>{ key, value, prev, next }</code> node for every entry: allocation, GC, pointer chasing.</div>
+      <div class="card bad"><span class="card-title">Overhead per entry</span>prev/next links per entry: a node object in a naive LRU, typed-array slots in <code>lru-cache</code>. Allocation, GC, pointer chasing.</div>
       <div class="card bad"><span class="card-title">Work per hit</span>Every read unlinks and relinks a node at the head.</div>
       <div class="card bad"><span class="card-title">Scans</span>Iterating a data set larger than the cache flushes all of it: hit rate drops to 0%.</div>
     </div>
@@ -62,16 +62,16 @@ class FastCache {
   <section>
     <h2>Two random choices vs lru-cache</h2>
     <div class="chart" data-unit="ns">
-      <div class="bad" data-value="19.9">lru-cache: update an existing key</div>
-      <div class="good" data-value="5.39" data-note="3.7×">two-choice: update an existing key</div>
-      <div class="bad" data-value="13.9">lru-cache: get (hit)</div>
-      <div class="good" data-value="11.6" data-note="1.2×">two-choice: get (hit)</div>
-      <div class="bad" data-value="23.6">lru-cache: 80% get / 20% set</div>
-      <div class="good" data-value="16.5" data-note="1.4×">two-choice: 80% get / 20% set</div>
-      <div class="good" data-value="58.6">lru-cache: set that evicts</div>
-      <div class="bad" data-value="82.1">two-choice: set that evicts</div>
+      <div class="bad" data-value="19.5">lru-cache: update an existing key</div>
+      <div class="good" data-value="11.5" data-note="1.7×">two-choice: update an existing key</div>
+      <div class="bad" data-value="14.4">lru-cache: get (hit)</div>
+      <div class="good" data-value="9.59" data-note="1.5×">two-choice: get (hit)</div>
+      <div class="bad" data-value="22.3">lru-cache: 80% get / 20% set</div>
+      <div class="good" data-value="17.4" data-note="1.3×">two-choice: 80% get / 20% set</div>
+      <div class="good" data-value="58.5" data-note="1.5×">lru-cache: set that evicts</div>
+      <div class="bad" data-value="90.0">two-choice: set that evicts</div>
     </div>
-    <p class="muted">Wins on hits and updates, with zero allocation per operation. lru-cache is faster when <em>every</em> set evicts.</p>
+    <p class="muted">Wins on hits and updates, with 0 B per operation. When every set evicts, lru-cache is 1.5× faster, and both allocate ~100 B (Map churn).</p>
     <p class="source">benchmarks/cache.mjs · 1,024 entries · EPYC 9355P · Node 26.10</p>
   </section>
 </section>

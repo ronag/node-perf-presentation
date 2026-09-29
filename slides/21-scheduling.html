@@ -26,6 +26,7 @@ const smb = new Scheduler({ concurrency: 3 })   // cap slow work: always leave a
 await io.run(() => fs.promises.readFile(ssdPath), 'high')
 await smb.run(() => io.run(() => fs.promises.readFile(smbPath), 'low'))</code></pre>
     <p class="muted">Leave a fast lane: limit slow I/O so fast requests always find a free thread.</p>
+    <p class="source">Latencies from a production service</p>
   </section>
 
   <section>
@@ -34,6 +35,7 @@ await smb.run(() => io.run(() => fs.promises.readFile(smbPath), 'low'))</code></
 
 const scheduler = new Scheduler({ concurrency: 4 })
 
+// from different handlers: priority matters only when all slots are busy
 await scheduler.run(() => handleApiRequest(req), 'high')
 await scheduler.run(() => processMessage(msg), 'normal')
 await scheduler.run(() => generateReport(), 'low')
@@ -61,8 +63,9 @@ await scheduler.run(() => generateReport(), 'low')
     <pre class="big"><code class="language-javascript">// main thread
 const size = Number(process.env.UV_THREADPOOL_SIZE ?? 4)
 const shared = Scheduler.makeSharedState(size)
-for (let i = 0; i < 4; i++) {
-  new Worker('./http-worker.js', { workerData: { shared } })
+const WORKERS = 4
+for (let i = 0; i < WORKERS; i++) {
+  new Worker(new URL('./http-worker.js', import.meta.url), { workerData: { shared } })
 }
 
 // each Worker: one concurrency limit for the whole process

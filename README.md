@@ -16,14 +16,14 @@ The deck has to be served over HTTP, because the slides are loaded with `fetch`.
 
 | Key | Action |
 |---|---|
-| `→` / `Space` | next (goes through fragments, then down each chapter, then on to the next chapter) |
+| `→` / `Space` | next: through fragments, then every slide in order, chapter by chapter |
 | `←` | previous |
-| `S` | **speaker view**: notes, a timer, and the next slide. Each note starts with a `⏱ mm:ss` target |
+| `S` | **speaker view**: notes, a timer, and the next slide. The first slide of each part of the talk has a `⏱ mm:ss` target |
 | `F` | fullscreen |
 | `Esc` / `O` | overview: chapters are columns, and the appendix sits to the right of "Thank you" |
 | `G` | jump to a slide number |
 | `B` or `.` | black screen |
-| `C` | core path on/off (reloads) |
+| `C` | core path on/off (reloads at slide 1) |
 | `?` | all shortcuts |
 
 Open the speaker view on the laptop and drag the main window to the projector.
@@ -62,7 +62,7 @@ js/deck.js                 include loader, chapter kickers, bar charts, Reveal c
 
 A chapter is a top-level `<section data-chapter="Name" data-chapter-num="02">` containing one `<section>` per slide:
 
-- The kicker ("02 · Name") is added to each slide automatically; `class="no-kicker"` suppresses it.
+- The kicker ("02 NAME") is added to each slide automatically; `class="no-kicker"` suppresses it.
 - A `class="section-header"` slide becomes the chapter opener.
 - `data-core` puts a slide on the 30-minute core path.
 - `data-appendix` makes a chapter uncounted backup material.
@@ -95,13 +95,13 @@ npm run bench:timers          # one benchmark
 docker run --rm --cpuset-cpus=4 -v $PWD:/bench -w /bench node:26.10.0 node scripts/bench-all.mjs
 ```
 
-- Most scripts need `--expose-gc` (the npm scripts pass it). mitata's `.gc('inner')` collects between samples, so GC time is **not** included in the reported numbers.
+- Most scripts need `--expose-gc` (the npm scripts pass it). mitata's `.gc('inner')` forces a collection between samples; GC caused by a benchmark's own allocation during a sample is still timed.
 - `sqlite-*.mjs` should run on a real disk: `BENCH_DIR=/data` with a Docker volume, not tmpfs.
-- `timers`, `cross-thread` and `slice` need the private `@nxtedition/*` packages, and `url.mjs` needs `request-target` (an optional dependency).
+- `timers`, `cross-thread`, `slice` and `sqlite-cache-shards` need the private `@nxtedition/*` packages (`sqlite-cache-shards` writes to `TMPDIR`, so set `TMPDIR=/data`), and `url.mjs` needs `request-target` (an optional dependency).
 
 ### Custom Node builds (the "Build your own Node" chapter)
 
-Every step was built from the same Node 26.10.0 source and measured on tv2k-srv4 with the nxt benchmark workloads (`benchmark/workloads.mjs` in `docker/swarm/base/node` of nxtedition/nxt). That's 14 groups: Buffer, JSON, HTTP, Workers + reusePort, startup, allocation and GC. Images were run in interleaved order, 4 runs plus a warm-up, on pinned cores. Raw output is in `results/node-builds/`.
+Every step was built from the same Node 26.10.0 source and measured on tv2k-srv4 with the nxt benchmark workloads (`benchmark/workloads.mjs` in `docker/swarm/base/node` of nxtedition/nxt). That's 14 groups: Buffer, SHA-256, gzip, JSON, HTTP, Workers + reusePort, startup, allocation and GC. Images were run in interleaved order, 8 runs plus a warm-up, on pinned cores; slides show a change only when its 95% bootstrap CI excludes 0 (and, for PGO builds, it reproduces in a second, separately trained chain). The workloads live in a private repo; `results/node-builds/run-ab.mjs` is the runner. Raw output is in `results/node-builds/`.
 
 | Step | Image | What changes |
 |---|---|---|
@@ -109,7 +109,7 @@ Every step was built from the same Node 26.10.0 source and measured on tv2k-srv4
 | 1 · allocator | the same + `LD_PRELOAD=libmimalloc.so`, `MIMALLOC_PURGE_DELAY=1000` | allocator only |
 | (control) | our own build with Clang 20, no LTO | should match the official binary |
 | 2 · LTO | + `--enable-lto` | link-time optimization |
-| 3 · `-march` | + `-march=znver5 -mtune=znver5` via a compiler wrapper | ISA target: Zen 5, AVX-512 |
+| 3 · `-march` | + `-march=znver5 -mtune=znver5 -mno-gather` via a compiler wrapper | ISA target: Zen 5, AVX-512 |
 | 4 · Clang 23 | the same with Clang 23 | compiler |
 | 5 · PGO | + two-pass Clang IR-PGO, 12 weighted training workloads | profile |
 | 6 · pointer compression | + `--experimental-enable-pointer-compression` | heap pointer width |

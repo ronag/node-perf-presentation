@@ -31,23 +31,23 @@ function onRequest (req) {
 
 function sweep () {
   for (let n = 0; n < requests.length;) {
-    if (requests[n].closed) swapRemove(requests, n)
+    if (requests[n].closed) swapRemove(requests, n)  // O(1)
     else n++
   }
 }
-setInterval(() => scheduler.run(sweep, 'lowest'), 2000)</code></pre>
+setInterval(sweep, 2000)</code></pre>
       </div>
     </div>
-    <p class="callout">An O(n) sweep at <code>'lowest'</code> priority every 2 s beats O(1) overhead on every request.</p>
+    <p class="callout">An O(n) sweep every 2 s can be cheaper than bookkeeping on every request, but closed requests stay alive up to 2 s longer and may get promoted. Measure both.</p>
   </section>
 
   <section>
     <h2>Off-peak scheduling</h2>
     <pre class="big"><code class="language-javascript">cron('02:00', () => {
   compactCaches()
-  flushLogs()
-  global.gc()   // a full collection when nobody is waiting (--expose-gc)
+  rotateLogs()
+  globalThis.gc()   // a full collection when nobody is waiting (--expose-gc)
 })</code></pre>
-    <p class="callout">You can't avoid expensive work, but you can <strong>choose when it happens</strong>. GC and cleanup run when you decide, not in the middle of a request.</p>
+    <p class="callout">You can't avoid expensive work, but you can <strong>choose when some of it happens</strong>: compaction and cleanup run off-peak. A forced GC doesn't stop V8 collecting at peak.</p>
   </section>
 </section>

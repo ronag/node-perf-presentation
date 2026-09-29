@@ -25,9 +25,10 @@
     <h2>The hidden costs</h2>
     <p class="lead">Both add absolute overhead. Sync and single-threaded is the cheapest unit of work.</p>
     <div class="cols">
-      <div class="card good"><span class="card-title">Concurrency overhead</span>~74 ns per await · microtask queue · async context</div>
-      <div class="card info"><span class="card-title">Parallelism overhead</span>~0.9 µs per postMessage, ~27 ns via a ring buffer · cache pollution · a heap and GC per thread · Atomics and OS scheduling</div>
+      <div class="card warn"><span class="card-title">Concurrency overhead</span>~74 ns per await · microtask queue · async context</div>
+      <div class="card warn"><span class="card-title">Parallelism overhead</span>~0.9 µs per postMessage, ~27 ns via a ring buffer · cache pollution · a heap and GC per thread · Atomics and OS scheduling</div>
     </div>
+    <p class="source">benchmarks/async-overhead.mjs · cross-thread.mjs (64 B messages) · EPYC 9355P · Node 26.10</p>
   </section>
 
   <section>
@@ -43,7 +44,7 @@
     <div class="cols-3">
       <div class="card good"><span class="card-title">Stay single-threaded</span>CPU work under 1 ms, hot data in cache, per-request latency matters most.</div>
       <div class="card warn"><span class="card-title">Concurrency (async)</span>Waiting on network, disk or DNS; many connections.</div>
-      <div class="card info"><span class="card-title">Parallelism (Workers)</span>CPU work over ~40 ms, independent state, and a gain that outweighs communication.</div>
+      <div class="card info"><span class="card-title">Parallelism (Workers)</span>CPU work over ~40 ms (1–40 ms: chunk it and yield), independent state, and a gain that outweighs communication.</div>
     </div>
     <p class="callout">Default to single-threaded. Add async for I/O. Reach for Workers when the CPU work is big enough to pay for them, and measure to prove it.</p>
   </section>

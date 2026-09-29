@@ -32,7 +32,7 @@ setInterval(() => {
       <div class="card warn"><span class="card-title">Maintains lists</span>A linked list per duration plus a priority queue</div>
     </div>
     <div class="stats" style="margin-top:18px">
-      <div class="stat bad"><span class="stat-value">10,000</span><span class="stat-label">connections × 1 idle timeout = 10,000 long-lived objects, promoted and traced on every major GC</span></div>
+      <div class="stat bad"><span class="stat-value">10,000</span><span class="stat-label">connections × 1 idle timeout = 10,000 Timeouts × 128 B, promoted to old space and traced on every major GC</span></div>
     </div>
   </section>
 
@@ -48,7 +48,7 @@ const fast = setTimeout(onTick, 50)
 
 clearTimeout(handle)
 clearTimeout(fast)</code></pre>
-    <p class="muted">Trade-offs: up to one tick late, and callbacks don't carry <code>AsyncLocalStorage</code> context.</p>
+    <p class="muted">Trade-offs: fires up to 250 ms early or late (half a tick), never keeps the process alive (unref'd), and callbacks run in another caller's <code>AsyncLocalStorage</code> context.</p>
   </section>
 
   <section>
@@ -57,7 +57,7 @@ clearTimeout(fast)</code></pre>
   const now = Math.round(performance.now() - origin)   // stays a Smi
   while (index < timers.length) {
     const t = timers[index]
-    if (t.deadline <= now) {
+    if (t.deadline <= now + 250) {          // due within half a tick
       swapRemove(timers, index)             // O(1)
       t.callback(t.opaque)                  // opaque, not a closure
     } else index++
@@ -69,7 +69,7 @@ clearTimeout(fast)</code></pre>
 
   <section data-core>
     <h2>Native vs pooled <code>setTimeout</code></h2>
-    <div class="chart" data-unit="ns" data-title="schedule + cancel one 5 s timer">
+    <div class="chart" data-unit="ns" data-title="schedule + cancel one 5 s timer, no other 5 s timer live (native's worst case)">
       <div class="bad" data-value="934" data-display="934 ns · 358 B">native</div>
       <div class="good" data-value="55.1" data-display="55 ns · 93 B" data-note="17×">pooled</div>
     </div>
@@ -77,7 +77,7 @@ clearTimeout(fast)</code></pre>
       <div class="bad" data-value="128.3">native</div>
       <div class="good" data-value="73.0" data-note="−43%">pooled</div>
     </div>
-    <p class="muted">A burst of 100 timers is equal in time (5.46 vs 5.40 µs) but allocates 9× less. The steady-state win is memory.</p>
+    <p class="muted">With other 5 s timers live (the usual idle-timeout case), native costs ~55 ns per timer like pooled (100 timers: 5.46 vs 5.40 µs) and allocates ~4× more. The steady-state win is memory.</p>
     <p class="source">benchmarks/timers.mjs · EPYC 9355P · Node 26.10 · @nxtedition/timers 1.1</p>
   </section>
 </section>

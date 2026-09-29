@@ -10,7 +10,7 @@
     <div class="cols">
       <div>
         <div class="col-label bad">Standard: wrapper nodes or scans</div>
-        <pre><code class="language-javascript">set.add(item)       // internal entry → GC
+        <pre><code class="language-javascript">set.add(item)       // tombstones → rehash → GC
 set.delete(item)
 
 list.add(item)      // wrapper node → GC
@@ -59,7 +59,7 @@ function remove (arr, item) {   // O(1) swap-remove
       <div class="good" data-value="14.2" data-display="14.2 ns · 0 B">intrusive linked list</div>
       <div data-value="59.5" data-display="59.5 ns · 29 B">Set delete + add</div>
       <div data-value="103" data-display="103 ns · 89 B">linked list with wrapper nodes + Map</div>
-      <div class="bad" data-value="4000" data-display="4.0 µs">array indexOf + splice</div>
+      <div class="bad" data-value="4000" data-display="4.0 µs · 56 B">array indexOf + splice</div>
     </div>
     <p class="source">benchmarks/intrusive-containers.mjs · EPYC 9355P · Node 26.10 · log scale</p>
   </section>

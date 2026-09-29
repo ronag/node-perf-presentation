@@ -32,8 +32,9 @@ class FastCache {
     // wrap around is harmless since we only compare ticks for recency, not absolute value
     this.#tick = (this.#tick + 1) & 2147483647
 
-    if (item[kCacheIdx] !== -1) {
-      // Update existing — item already in arr
+    // Update existing: the same lookup the slide's set() does
+    const prev = this.#map.get(key)
+    if (prev === item) {
       item[kCacheTick] = this.#tick
       return
     }

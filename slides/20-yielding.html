@@ -10,13 +10,13 @@
     <div class="strip-label">Normal operation: short tasks interleave</div>
     <div class="strip">
       <div style="flex:2;background:var(--good)">HTTP</div><div style="flex:1;background:var(--info)">timer</div><div style="flex:2;background:var(--violet)">I/O cb</div>
-      <div style="flex:1;background:var(--accent)">timer</div><div style="flex:2;background:var(--good)">HTTP</div><div style="flex:1;background:var(--info)">I/O</div>
+      <div style="flex:1;background:var(--info)">timer</div><div style="flex:2;background:var(--good)">HTTP</div><div style="flex:1;background:var(--violet)">I/O</div>
     </div>
     <div class="strip-label bad">Starvation: one long synchronous task</div>
     <div class="strip">
       <div style="flex:1;background:var(--good)">HTTP</div>
       <div style="flex:12;background:var(--bad);color:#fff">your sync code: 200 ms · requests, timers, I/O all wait</div>
-      <div style="flex:1;background:var(--info)">I/O</div>
+      <div style="flex:1;background:var(--violet)">I/O</div>
     </div>
     <p class="callout">If your code runs for 200 ms, <strong>nothing else happens for 200 ms</strong>.</p>
   </section>
@@ -39,7 +39,7 @@
 
 for (const row of db.prepare('SELECT * FROM huge_table').iterate()) {
   processRow(row)
-  const p = maybeYield()   // null until 40 ms have passed
+  const p = maybeYield()   // null until 40 ms since the last yield
   if (p) await p           // then give the event loop a turn
 }</code></pre>
   </section>
@@ -54,7 +54,8 @@ function shouldYield (timeout = yieldTimeout) {
 }
 
 function maybeYield () {
-  // null on the fast path; otherwise queue and drain in a batch via setImmediate
+  // null on the fast path; otherwise doYield(): one setImmediate resumes
+  // every waiter at once and resets yieldTime
   return shouldYield() ? doYield() : null
 }</code></pre>
     <p class="callout">Yielding lets you use sync APIs (<code>readFileSync</code>, <code>Database</code>) on the main thread without starving the loop. Do real work, yield, repeat.</p>
