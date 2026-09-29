@@ -55,6 +55,20 @@ await run()</code></pre>
   </section>
 
   <section>
+    <h2>Big-O hides the constants: N = 30</h2>
+    <div class="chart" data-unit="ns" data-title="remove + re-add a random item, N = 30">
+      <div class="good" data-value="4.50">intrusive array, swap-remove · O(1)</div>
+      <div class="good" data-value="6.86">intrusive linked list · O(1)</div>
+      <div class="good" data-value="47.7">indexOf + splice · O(n)</div>
+      <div data-value="48.4">Set delete + add · O(1)</div>
+      <div class="bad" data-value="69.9">linked list with wrapper nodes + Map · O(1)</div>
+    </div>
+    <p class="muted">With 30 items the O(n) scan matches a Set and beats the wrapper linked list by 1.5×: 30 contiguous pointers are one cheap scan.</p>
+    <p class="callout warn">These numbers flatter the linked list: here all 30 nodes sit in L1. In production its nodes are often not in cache, and every hop can be a cache miss, so the array's real advantage is bigger.</p>
+    <p class="source">benchmarks/intrusive-containers.mjs (N=30) · EPYC 9355P · Node 26.10</p>
+  </section>
+
+  <section>
     <h2>Rules for trustworthy benchmarks</h2>
     <ol>
       <li><strong>Consume results</strong> (<code>do_not_optimize</code>) and <strong>randomize inputs</strong>.</li>

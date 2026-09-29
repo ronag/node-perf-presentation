@@ -1,5 +1,5 @@
 // Benchmark: Intrusive unordered array vs linked list vs normal array
-// Measures remove + re-add of a random item on pre-filled containers (N=10000).
+// Measures remove + re-add of a random item on pre-filled containers (N=10000, or N=… from the env).
 //
 // The item changes every iteration (a precomputed random order). Removing and
 // re-adding the *same* item every iteration would benchmark a V8 Map/Set
@@ -7,7 +7,7 @@
 // lookup becomes O(n) and dominates everything.
 import { run, bench, group, summary, do_not_optimize } from 'mitata'
 
-const N = 10000
+const N = Number(process.env.N ?? 10000)
 
 const kIndex = Symbol('index')
 const kPrev = Symbol('prev')
