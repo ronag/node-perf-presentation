@@ -87,6 +87,7 @@ await run()</code></pre>
       <li><strong>Consume results</strong> (<code>do_not_optimize</code>) and <strong>randomize inputs</strong>.</li>
       <li><strong>Warm up</strong>, then measure what TurboFan produces.</li>
       <li><strong>Use production sizes</strong>: 100 MiB of data, not 1 KiB.</li>
+      <li><strong>Understand the CPU cache</strong> and make its state realistic: a tight loop keeps everything in L1; production data is often cold.</li>
       <li><strong>Watch allocation and GC</strong>, not just time.</li>
       <li><strong>Use production hardware</strong>: pinned cores, the real OS. Unless marked otherwise: AMD EPYC 9355P, Linux, Node 26.10, Docker, pinned cores.</li>
       <li><strong>Validate against production.</strong> If they disagree, trust production.</li>
